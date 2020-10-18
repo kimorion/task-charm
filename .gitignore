@@ -1,0 +1,8 @@
+bin/
+obj/
+ssl/
+.idea/
+/packages/
+/_ReSharper.Caches/
+*.exe
+riderModule.iml
