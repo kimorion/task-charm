@@ -6,7 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Telegram.Bot;
 
-namespace Charm.Core
+namespace Charm.Application
 {
     public class Program
     {

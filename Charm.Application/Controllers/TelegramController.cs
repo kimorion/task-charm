@@ -4,7 +4,7 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
-namespace Charm.Core.Controllers
+namespace Charm.Application.Controllers
 {
     [ApiController]
     [Route("telegram-bot")]

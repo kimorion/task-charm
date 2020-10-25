@@ -1,6 +1,6 @@
 ﻿using Telegram.Bot;
 
-namespace Charm.Core
+namespace Charm.Application
 {
     public static class TelegramBotClientExtensions
     {

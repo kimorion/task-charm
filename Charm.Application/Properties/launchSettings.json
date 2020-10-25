@@ -8,7 +8,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
-    "Charm.Core": {
+    "Charm.Application": {
       "commandName": "Project",
       "applicationUrl": "https://localhost:8444;http://localhost:8443",
       "environmentVariables": {
