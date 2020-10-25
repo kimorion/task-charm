@@ -13,7 +13,7 @@ namespace Charm.Application
         public static void Main(string[] args)
         {
             var config = new ConfigurationBuilder()
-                .AddJsonFile("./ssl/telegram-bot-settings.json", optional: false)
+                .AddJsonFile("./conf/telegram-bot-settings.json", optional: false)
                 .Build();
             var telegramBotSettings = config.GetSection("TelegramBotSettings");
 

@@ -19,12 +19,12 @@ namespace Charm.Application
             Configuration = configuration;
 
             var botSettings = new ConfigurationBuilder()
-                .AddJsonFile("./ssl/telegram-bot-settings.json", optional: false)
+                .AddJsonFile("./conf/telegram-bot-settings.json", optional: false)
                 .Build();
             TelegramSettingsSection = botSettings.GetSection("TelegramBotSettings");
 
             var dbSettings = new ConfigurationBuilder()
-                .AddJsonFile("./ssl/database-settings.json", optional: false)
+                .AddJsonFile("./conf/database-settings.json", optional: false)
                 .Build();
             DbSettingsSection = dbSettings.GetSection("ConnectionStrings");
         }

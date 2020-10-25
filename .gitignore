@@ -1,6 +1,7 @@
 bin/
 obj/
 ssl/
+conf/
 .idea/
 /packages/
 /_ReSharper.Caches/
