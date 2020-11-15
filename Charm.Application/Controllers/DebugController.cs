@@ -1,4 +1,5 @@
 ﻿using Charm.Core.Domain;
+using Charm.Core.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Charm.Application.Controllers

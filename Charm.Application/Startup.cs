@@ -59,6 +59,8 @@ namespace Charm.Application
         {
             logger.LogInformation($"Telegram Webhook set: {setWebhookUrl}");
 
+            UpdateDatabase(app);
+
             app.UseSwagger();
             app.UseSwaggerUI(c =>
             {
@@ -74,6 +76,19 @@ namespace Charm.Application
             app.UseRouting();
 
             app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
+        }
+
+        private static void UpdateDatabase(IApplicationBuilder app)
+        {
+            using (var serviceScope = app.ApplicationServices
+                .GetRequiredService<IServiceScopeFactory>()
+                .CreateScope())
+            {
+                using (var context = serviceScope.ServiceProvider.GetService<CharmDbContext>())
+                {
+                    context.Database.Migrate();
+                }
+            }
         }
     }
 }
