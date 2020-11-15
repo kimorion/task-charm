@@ -40,6 +40,7 @@ namespace Charm.Application
             services.AddDbContext<CharmDbContext>(
                 options => options.UseNpgsql(DbSettingsSection["Main"]));
             services.AddTransient<CharmInterpreter>();
+            services.AddTransient<CharmLibrarian>();
 
             services.AddControllers().AddNewtonsoftJson();
             services.AddTransient<ITelegramBotClient, TelegramBotClient>(provider =>

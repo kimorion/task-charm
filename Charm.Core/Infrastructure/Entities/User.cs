@@ -7,6 +7,16 @@ namespace Charm.Core.Infrastructure.Entities
     {
         public Guid Id { get; set; }
         public string Name { get; set; }
-        public Guid DialogId { get; set; }
+        
+        // todo Settings:
+        // public TimeSpan MorningTime { get; set; }
+        // public TimeSpan DayTime { get; set; }
+        // public TimeSpan EveningTime { get; set; }
+        
+        //todo Context:
+        // public LastAction LastAction { get; set; }
+        // public DialogContext DialogContext { get; set; }
+        // например, создание проекта
+        // создание подзадачи
     }
 }

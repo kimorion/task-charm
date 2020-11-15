@@ -1,16 +1,24 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Optional;
 
 namespace Charm.Core.Domain
 {
     public class CharmInterpreter
     {
-        public Option<string, Exception> TakeTextMessage()
+        private readonly CharmLibrarian _librarian;
+
+        public CharmInterpreter(CharmLibrarian librarian)
+        {
+            _librarian = librarian;
+        }
+
+        public async Task<Option<string, Exception>> TakeTextMessage(Guid userId, string message)
         {
             throw new NotImplementedException();
         }
 
-        public Option<string, Exception> TakeAudioMessage()
+        public async Task<Option<string, Exception>> TakeAudioMessage()
         {
             throw new NotImplementedException();
         }

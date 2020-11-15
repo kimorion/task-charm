@@ -8,6 +8,7 @@ namespace Charm.Application.Controllers
 {
     [ApiController]
     [Route("telegram-bot")]
+    [ApiExplorerSettings(IgnoreApi=true)]
     public class TelegramController : Controller
     {
         private readonly ITelegramBotClient _client;
@@ -34,12 +35,6 @@ namespace Charm.Application.Controllers
             }
 
             await _client.SendTextMessageAsync(message.Chat.Id, "Получен текст!");
-        }
-
-        [HttpGet]
-        public IActionResult TestGet()
-        {
-            return Ok("Ok!");
         }
     }
 }
