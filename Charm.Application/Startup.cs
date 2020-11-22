@@ -1,5 +1,7 @@
-using System;
+using AutoMapper;
+using Charm.Application.Utils;
 using Charm.Core.Domain;
+using Charm.Core.Domain.Services;
 using Charm.Core.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -32,7 +34,7 @@ namespace Charm.Application
         private IConfiguration Configuration { get; }
         private IConfigurationSection TelegramSettingsSection { get; }
         private IConfigurationSection DbSettingsSection { get; }
-        private string setWebhookUrl;
+        private string? _setWebhookUrl;
 
 
         public void ConfigureServices(IServiceCollection services)
@@ -40,25 +42,28 @@ namespace Charm.Application
             services.AddDbContext<CharmDbContext>(
                 options => options.UseNpgsql(DbSettingsSection["Main"]));
             services.AddTransient<CharmInterpreter>();
-            services.AddTransient<CharmLibrarian>();
+            services.AddTransient<CharmManager>();
 
-            services.AddControllers().AddNewtonsoftJson();
             services.AddTransient<ITelegramBotClient, TelegramBotClient>(provider =>
             {
                 var telegramClient = new TelegramBotClient(TelegramSettingsSection["Token"]);
                 return telegramClient;
             });
 
-            setWebhookUrl =
+            _setWebhookUrl =
                 new TelegramBotClient(TelegramSettingsSection["Token"])
                     .SetupWebhook(TelegramSettingsSection["WebhookUrl"]);
 
             services.AddSwaggerGen();
+
+            services.AddAutoMapper(typeof(Startup));
+
+            services.AddControllers().AddNewtonsoftJson();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILogger<Startup> logger)
         {
-            logger.LogInformation($"Telegram Webhook set: {setWebhookUrl}");
+            logger.LogInformation($"Telegram Webhook set: {_setWebhookUrl}");
 
             UpdateDatabase(app);
 
@@ -87,7 +92,7 @@ namespace Charm.Application
             {
                 using (var context = serviceScope.ServiceProvider.GetService<CharmDbContext>())
                 {
-                    context.Database.Migrate();
+                    context!.Database.Migrate();
                 }
             }
         }
