@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -69,7 +70,7 @@ namespace Charm.Application
 
                 try
                 {
-                    await _client.SendTextMessageAsync(reminder.Gist.UserId.ToString(), text, ParseMode.MarkdownV2);
+                    await _client.SendTextMessageAsync(reminder.Gist.UserId.ToString(), text, ParseMode.Html);
                     sentCount++;
                 }
                 catch (Exception e)
@@ -78,7 +79,7 @@ namespace Charm.Application
                 }
             }
 
-            _logger.LogInformation($"{sentCount} notifications was sent");
+            _logger.LogInformation($"{sentCount} notifications was sent ({DateTime.Now:T})");
         }
 
         private static string GenerateNotificationTest(Reminder reminder)
@@ -86,12 +87,18 @@ namespace Charm.Application
             StringBuilder builder = new StringBuilder();
             var eventTime = reminder.Deadline;
             if (reminder.Advance is not null) eventTime += reminder.Advance.Value;
+            var dateTimeString = eventTime.ToString("yyyy-M-d dddd HH:mm", CultureInfo.GetCultureInfo("RU-ru"));
+            dateTimeString = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(dateTimeString);
 
-            builder.AppendLine("**Напоминание:** ");
+            builder.AppendLine("<b>Напоминание:</b> ");
             builder.AppendLine();
-            builder.AppendLine($"__({eventTime:t dd MMMM yyyy})__");
-            builder.AppendLine();
+            builder.Append("<i>");
             builder.AppendLine(reminder.Gist.Text);
+            builder.Append("</i>");
+            builder.AppendLine();
+            builder.Append("<u>");
+            builder.AppendLine($"{dateTimeString}");
+            builder.Append("</u>");
 
             return builder.ToString();
         }
