@@ -7,32 +7,35 @@ using System.Threading.Tasks;
 using Charm.Core.Infrastructure;
 using Charm.Core.Infrastructure.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
+using Telegram.Bot.Types.Enums;
 
-namespace Charm.Application.CharmNotifier
+namespace Charm.Application
 {
-    public class CharmNotifier
+    public class CharmNotifierService
     {
+        private readonly ILogger _logger;
         private readonly CharmDbContext _context;
-        private readonly TelegramBotClient _client;
-        private readonly ILogger<CharmNotifier> _logger;
+        private readonly ITelegramBotClient _client;
 
-        public CharmNotifier(TelegramBotClient client, CharmDbContext context, ILogger<CharmNotifier> logger)
+        public CharmNotifierService(
+            ILogger<CharmNotifierService> logger,
+            CharmDbContext context,
+            ITelegramBotClient client)
         {
-            _client = client;
-            _context = context;
             _logger = logger;
+            _context = context;
+            _client = client;
         }
 
-        public Task StartNotifier()
+        public async Task DoWork(CancellationToken stoppingToken)
         {
-            return Send();
-        }
+            const int maxUsersCount = 25;
 
-        public async Task Send(int maxUsersCount = 25)
-        {
-            while (true)
+            while (!stoppingToken.IsCancellationRequested)
             {
                 List<Reminder> expiredReminders = await GetExpiredReminders(maxUsersCount);
 
@@ -45,12 +48,13 @@ namespace Charm.Application.CharmNotifier
 
         private async Task<List<Reminder>> GetExpiredReminders(int count)
         {
+            var currentDateTimeOffset = DateTimeOffset.Now;
             return await _context.Reminders
-                .Include(e => e.Gist)
-                .ThenInclude(e => e.User)
-                .Where(e => e.Deadline >= DateTimeOffset.Now)
+                .Where(e => e.Deadline <= currentDateTimeOffset)
                 .OrderByDescending(e => e.Deadline)
                 .Take(count)
+                .Include(e => e.Gist)
+                .ThenInclude(e => e.User)
                 .AsNoTracking()
                 .ToListAsync();
         }
@@ -65,7 +69,7 @@ namespace Charm.Application.CharmNotifier
 
                 try
                 {
-                    await _client.SendTextMessageAsync(reminder.Gist.UserId.ToString(), text);
+                    await _client.SendTextMessageAsync(reminder.Gist.UserId.ToString(), text, ParseMode.MarkdownV2);
                     sentCount++;
                 }
                 catch (Exception e)
@@ -102,6 +106,37 @@ namespace Charm.Application.CharmNotifier
         private static Task WaitCooldown()
         {
             return Task.Delay(2000);
+        }
+    }
+
+    public class CharmNotifierHostedService : BackgroundService
+    {
+        private readonly ILogger<CharmNotifierHostedService> _logger;
+        private readonly IServiceProvider _services;
+
+        public CharmNotifierHostedService(
+            IServiceProvider services,
+            ILogger<CharmNotifierHostedService> logger)
+        {
+            _services = services;
+            _logger = logger;
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            _logger.LogInformation("Starting notifier service...");
+            await DoWork(stoppingToken);
+            _logger.LogInformation("Stopping notifier service...");
+        }
+
+        private async Task DoWork(CancellationToken stoppingToken)
+        {
+            using var scope = _services.CreateScope();
+            var scopedProcessingService =
+                scope.ServiceProvider
+                    .GetRequiredService<CharmNotifierService>();
+
+            await scopedProcessingService.DoWork(stoppingToken);
         }
     }
 }

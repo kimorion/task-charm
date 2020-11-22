@@ -1,6 +1,4 @@
 using AutoMapper;
-using Charm.Application.Utils;
-using Charm.Core.Domain;
 using Charm.Core.Domain.Services;
 using Charm.Core.Infrastructure;
 using Microsoft.AspNetCore.Builder;
@@ -43,6 +41,7 @@ namespace Charm.Application
                 options => options.UseNpgsql(DbSettingsSection["Main"]));
             services.AddTransient<CharmInterpreter>();
             services.AddTransient<CharmManager>();
+            services.AddTransient<CharmNotifierService>();
 
             services.AddTransient<ITelegramBotClient, TelegramBotClient>(provider =>
             {
@@ -59,13 +58,14 @@ namespace Charm.Application
             services.AddAutoMapper(typeof(Startup));
 
             services.AddControllers().AddNewtonsoftJson();
+
+            services.AddHostedService<CharmNotifierHostedService>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILogger<Startup> logger)
         {
             logger.LogInformation($"Telegram Webhook set: {_setWebhookUrl}");
 
-            UpdateDatabase(app);
 
             app.UseSwagger();
             app.UseSwaggerUI(c =>
@@ -82,6 +82,8 @@ namespace Charm.Application
             app.UseRouting();
 
             app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
+            
+            UpdateDatabase(app);
         }
 
         private static void UpdateDatabase(IApplicationBuilder app)

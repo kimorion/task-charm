@@ -3,17 +3,15 @@ using System;
 using Charm.Core.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
-namespace Charm.Core.Migrations
+namespace Charm.Core.Infrastructure.Migrations
 {
     [DbContext(typeof(CharmDbContext))]
-    [Migration("20201122133632_Init")]
-    partial class Init
+    partial class CharmDbContextModelSnapshot : ModelSnapshot
     {
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -34,8 +32,8 @@ namespace Charm.Core.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -73,9 +71,10 @@ namespace Charm.Core.Migrations
 
             modelBuilder.Entity("Charm.Core.Infrastructure.Entities.User", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("bigint")
+                        .UseIdentityByDefaultColumn();
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -99,7 +98,7 @@ namespace Charm.Core.Migrations
                         .IsRequired();
 
                     b.Navigation("ParentGist");
-
+                    
                     b.Navigation("User");
                 });
 

@@ -4,7 +4,7 @@ namespace Charm.Core.Domain.Dto
 {
     public class GistRequest
     {
-        public Guid UserId { get; set; }
+        public long ChatId { get; set; }
         public string GistMessage { get; set; } = "";
     }
 }

@@ -29,10 +29,10 @@ namespace Charm.Application.Controllers
             _mapper = mapper;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> TakeMessage([Required] string message)
-        {
-            throw new NotImplementedException();
-        }
+        // [HttpPost]
+        // public async Task<IActionResult> TakeMessage([Required] string message)
+        // {
+        //     throw new NotImplementedException();
+        // }
     }
 }

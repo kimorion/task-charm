@@ -1,4 +1,8 @@
-﻿namespace Charm.Core.Domain.Services
+﻿using System;
+using System.Threading.Tasks;
+using Charm.Core.Domain.Dto;
+
+namespace Charm.Core.Domain.Services
 {
     public class CharmInterpreter
     {
@@ -9,14 +13,17 @@
             _manager = manager;
         }
 
-        // public async Task<Option<string, Exception>> TakeTextMessage(Guid userId, string message)
-        // {
-        //     throw new NotImplementedException();
-        // }
-        //
-        // public async Task<Option<string, Exception>> TakeAudioMessage()
-        // {
-        //     throw new NotImplementedException();
-        // }
+        public async Task<string> TakeTextMessage(long chatId, string message)
+        {
+            await _manager.CreateGistWithReminder(new GistWithReminderRequest
+            {
+                GistMessage = message,
+                ChatId = chatId,
+                Deadline = DateTimeOffset.Now,
+                Advance = TimeSpan.Zero
+            });
+
+            return "Задача создана!";
+        }
     }
 }

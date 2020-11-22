@@ -17,22 +17,31 @@ namespace Charm.Core.Domain.Services
             _context = context;
         }
 
-        public async Task<List<Gist>> GetGists(Guid userId)
+        public async Task<List<Gist>> GetGists(long userId)
         {
             return await _context.Gists.Include(e => e!.Reminder).AsNoTracking().ToListAsync();
         }
 
-        public async Task SearchGists()
+        public async Task CreateUserIfNotExists(long chatId, string name)
         {
-            throw new NotImplementedException();
+            User? user = await _context.Users.SingleOrDefaultAsync(e => e.Id.Equals(chatId));
+            if (user is not null) return;
+
+            _context.Users.Add(new User {Id = chatId, Name = name});
+            await _context.SaveChangesAsync();
         }
+
+        // public async Task SearchGists()
+        // {
+        //     throw new NotImplementedException();
+        // }
 
         public async Task CreateGist(GistRequest request)
         {
             var gist = new Gist
             {
                 Text = request.GistMessage,
-                UserId = request.UserId
+                UserId = request.ChatId
             };
             _context.Gists.Add(gist);
             await _context.SaveChangesAsync();
@@ -43,7 +52,7 @@ namespace Charm.Core.Domain.Services
             var gist = new Gist
             {
                 Text = request.GistMessage,
-                UserId = request.UserId
+                UserId = request.ChatId
             };
             var reminder = new Reminder
             {
@@ -53,37 +62,38 @@ namespace Charm.Core.Domain.Services
             gist.Reminder = reminder;
 
             _context.Gists.Add(gist);
+            
             await _context.SaveChangesAsync();
         }
 
-        public async Task UpdateGist()
-        {
-            throw new NotImplementedException();
-        }
-
-        public async Task UpdateReminder()
-        {
-            throw new NotImplementedException();
-        }
-
-        public async Task DeleteGist()
-        {
-            throw new NotImplementedException();
-        }
-
-        public async Task DeleteReminder()
-        {
-            throw new NotImplementedException();
-        }
-
-        public async Task CreateSubGist()
-        {
-            throw new NotImplementedException();
-        }
-
-        public async Task AddReminderToTask()
-        {
-            throw new NotImplementedException();
-        }
+        // public async Task UpdateGist()
+        // {
+        //     throw new NotImplementedException();
+        // }
+        //
+        // public async Task UpdateReminder()
+        // {
+        //     throw new NotImplementedException();
+        // }
+        //
+        // public async Task DeleteGist()
+        // {
+        //     throw new NotImplementedException();
+        // }
+        //
+        // public async Task DeleteReminder()
+        // {
+        //     throw new NotImplementedException();
+        // }
+        //
+        // public async Task CreateSubGist()
+        // {
+        //     throw new NotImplementedException();
+        // }
+        //
+        // public async Task AddReminderToTask()
+        // {
+        //     throw new NotImplementedException();
+        // }
     }
 }

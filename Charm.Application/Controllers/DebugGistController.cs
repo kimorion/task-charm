@@ -21,7 +21,7 @@ namespace Charm.Application.Controllers
         private readonly CharmDbContext _context;
         private readonly CharmManager _charmManager;
         private readonly IMapper _mapper;
-        private readonly Guid _debugUserId = Guid.Parse("f3e3c17a-fb25-400b-8243-263373d6c506");
+        private readonly long _debugUserId = 1;
 
         public DebugGistController(
             CharmInterpreter interpreter,
@@ -54,7 +54,7 @@ namespace Charm.Application.Controllers
             await _charmManager.CreateGist(new Core.Domain.Dto.GistRequest
             {
                 GistMessage = request.Message ?? throw new NullReferenceException(),
-                UserId = _debugUserId
+                ChatId = _debugUserId
             });
             return Ok();
         }
@@ -65,7 +65,7 @@ namespace Charm.Application.Controllers
             await _charmManager.CreateGistWithReminder(new Core.Domain.Dto.GistWithReminderRequest
             {
                 GistMessage = request.Message ?? throw new NullReferenceException(),
-                UserId = _debugUserId,
+                ChatId = _debugUserId,
                 Deadline = request.Deadline ?? throw new NullReferenceException(),
                 Advance = request.Advance
             });
@@ -76,19 +76,29 @@ namespace Charm.Application.Controllers
         public async Task<IActionResult> GetGists()
         {
             var result = await _charmManager.GetGists(_debugUserId);
+            result = result.Select(e =>
+            {
+                var r = e.Reminder;
+                if (r is not null)
+                {
+                    r.Gist = null!;
+                }
+
+                return e;
+            }).ToList();
             return Ok(result);
         }
 
-        [HttpDelete]
-        public async Task<IActionResult> DeleteGist()
-        {
-            throw new NotImplementedException();
-        }
-
-        [HttpPut]
-        public async Task<IActionResult> UpdateGist()
-        {
-            throw new NotImplementedException();
-        }
+        // [HttpDelete]
+        // public async Task<IActionResult> DeleteGist()
+        // {
+        //     throw new NotImplementedException();
+        // }
+        //
+        // [HttpPut]
+        // public async Task<IActionResult> UpdateGist()
+        // {
+        //     throw new NotImplementedException();
+        // }
     }
 }

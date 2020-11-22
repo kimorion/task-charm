@@ -4,9 +4,10 @@ using Charm.Core.Infrastructure.Entities.Base;
 
 namespace Charm.Core.Infrastructure.Entities
 {
-    public class User : IDbEntity<Guid>
+    public class User : IDbEntity<long>
     {
-        public Guid Id { get; set; }
+        [Required]
+        public long Id { get; set; }
 
         [Required]
         public string Name { get; set; } = "";
