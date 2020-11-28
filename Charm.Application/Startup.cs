@@ -39,6 +39,7 @@ namespace Charm.Application
         {
             services.AddDbContext<CharmDbContext>(
                 options => options.UseNpgsql(DbSettingsSection["Main"]));
+            services.AddScoped<UserService>();
             services.AddTransient<CharmInterpreter>();
             services.AddTransient<CharmManager>();
             services.AddTransient<CharmNotifierService>();

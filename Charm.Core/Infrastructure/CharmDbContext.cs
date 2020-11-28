@@ -12,6 +12,7 @@ namespace Charm.Core.Infrastructure
         public DbSet<Gist> Gists { get; set; }
         public DbSet<Reminder> Reminders { get; set; }
         public DbSet<User> Users { get; set; }
+        public DbSet<ChatContext> ChatContexts { get; set; }
 #nullable disable
 
         public CharmDbContext(DbContextOptions<CharmDbContext> options) : base(options)
@@ -33,6 +34,8 @@ namespace Charm.Core.Infrastructure
 
             modelBuilder.Entity<Reminder>()
                 .HasIndex(r => r.Deadline);
+
+            modelBuilder.Entity<ChatContext>().HasNoKey();
 
             base.OnModelCreating(modelBuilder);
         }

@@ -8,14 +8,15 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="AutoMapper" Version="10.1.1"/>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="5.0.0"/>
-        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="5.0.0"/>
-        <!--        <PackageReference Include="LanguageExt.Core" Version="3.4.15" />-->
+        <PackageReference Include="AutoMapper" Version="10.1.1" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="5.0.0" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="5.0.0" />
+        <PackageReference Include="Telegram.Bot" Version="15.7.1" />
+<!--                <PackageReference Include="LanguageExt.Core" Version="3.4.15" />-->
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="Infrastructure\Migrations"/>
+        <Folder Include="Infrastructure\Migrations" />
     </ItemGroup>
 
 </Project>

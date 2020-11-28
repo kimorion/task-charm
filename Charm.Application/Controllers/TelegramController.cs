@@ -1,7 +1,9 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using Charm.Core.Domain.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -16,35 +18,46 @@ namespace Charm.Application.Controllers
         private readonly ITelegramBotClient _client;
         private readonly CharmInterpreter _interpreter;
         private readonly CharmManager _manager;
+        private readonly ILogger<TelegramController> _logger;
+        private readonly UserService _userService;
 
-        public TelegramController(ITelegramBotClient client, CharmInterpreter interpreter, CharmManager manager)
+        public TelegramController(
+            ITelegramBotClient client,
+            CharmInterpreter interpreter,
+            CharmManager manager,
+            ILogger<TelegramController> logger,
+            UserService userService)
         {
             _client = client;
             _interpreter = interpreter;
             _manager = manager;
+            _logger = logger;
+            _userService = userService;
         }
 
         [HttpPost]
-        public async Task<IActionResult> Update([FromBody] Update update)
+        public async Task<IActionResult> Update([Required] [FromBody] Update update)
         {
+            await _userService.Initialize(update.Message.From);
 
-            if (update.Type != UpdateType.Message)
+            string? response = null;
+            if (response is null && update.Type != UpdateType.Message)
             {
-                Console.WriteLine($"Unsupported update type: {update.Type}");
-                return Ok();
+                response = $"Данный тип сообщений не поддерживается: {update.Type}";
             }
 
-            var message = update.Message;
-            if (message.Type != MessageType.Text)
+            if (response is null && update.Message.Type != MessageType.Text)
             {
-                await _client.SendTextMessageAsync(message.Chat.Id, "Данный тип сообщений не поддерживается!");
-                return Ok();
+                response = $"Данный тип сообщений не поддерживается: {update.Message.Type}";
             }
 
-            await _manager.CreateUserIfNotExists(update.Message.Chat.Id, update.Message.Chat.Username);
-            var response = await _interpreter.TakeTextMessage(message.Chat.Id, message.Text);
+            if (response is null)
+            {
+                response = await _interpreter.TakeMessage(update.Message);
+            }
 
-            await _client.SendTextMessageAsync(message.Chat.Id, response);
+            _logger.LogDebug(response);
+            await _client.SendTextMessageAsync(update.Message.Chat.Id, response);
             return Ok();
         }
     }

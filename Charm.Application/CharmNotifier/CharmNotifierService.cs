@@ -79,7 +79,14 @@ namespace Charm.Application
                 }
             }
 
-            _logger.LogInformation($"{sentCount} notifications was sent ({DateTime.Now:T})");
+            if (sentCount == 0)
+            {
+                _logger.LogDebug($"{sentCount} notifications was sent ({DateTime.Now:T})");
+            }
+            else
+            {
+                _logger.LogInformation($"{sentCount} notifications was sent ({DateTime.Now:T})");
+            }
         }
 
         private static string GenerateNotificationTest(Reminder reminder)

@@ -5,36 +5,25 @@ using Charm.Core.Domain.Dto;
 using Charm.Core.Infrastructure;
 using Charm.Core.Infrastructure.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Charm.Core.Domain.Services
 {
     public class CharmManager
     {
         private readonly CharmDbContext _context;
+        private readonly ILogger<CharmManager> _logger;
 
-        public CharmManager(CharmDbContext context)
+        public CharmManager(CharmDbContext context, ILogger<CharmManager> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<List<Gist>> GetGists(long userId)
         {
             return await _context.Gists.Include(e => e!.Reminder).AsNoTracking().ToListAsync();
         }
-
-        public async Task CreateUserIfNotExists(long chatId, string name)
-        {
-            User? user = await _context.Users.SingleOrDefaultAsync(e => e.Id.Equals(chatId));
-            if (user is not null) return;
-
-            _context.Users.Add(new User {Id = chatId, Name = name});
-            await _context.SaveChangesAsync();
-        }
-
-        // public async Task SearchGists()
-        // {
-        //     throw new NotImplementedException();
-        // }
 
         public async Task CreateGist(GistRequest request)
         {
@@ -62,7 +51,7 @@ namespace Charm.Core.Domain.Services
             gist.Reminder = reminder;
 
             _context.Gists.Add(gist);
-            
+
             await _context.SaveChangesAsync();
         }
 
