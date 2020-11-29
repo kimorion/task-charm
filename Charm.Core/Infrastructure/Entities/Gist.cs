@@ -10,8 +10,8 @@ namespace Charm.Core.Infrastructure.Entities
 
         [Required]
         public string Text { get; set; } = "";
+        public bool IsDone { get; set; }
 
-        [Required]
 
         public long UserId { get; set; }
 

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Charm.Core.Domain.Entities;
 using Charm.Core.Domain.SpeechCases;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot.Types;
@@ -23,6 +24,8 @@ namespace Charm.Core.Domain.Services
 
             SpeechCases = new List<SpeechCase>
             {
+                new TaskListCase(),
+                new TaskCreationCase(),
             };
         }
 
@@ -43,23 +46,17 @@ namespace Charm.Core.Domain.Services
                 return "Не удалось распознать сообщение!";
             }
 
-            var messageWords = SplitMessageIntoWords(textMessage);
-
+            MessageInfo messageInfo = new MessageInfo(textMessage);
             foreach (var speechCase in SpeechCases)
             {
-                if (speechCase.TryMatch(messageWords))
+                if (speechCase.TryParse(messageInfo))
                 {
-                    var result = speechCase.ApplyAndRespond(_manager);
+                    var result = await speechCase.ApplyAndRespond(_userService.CharmUser.Id, _manager);
                     return result;
                 }
             }
 
             return "Не удалось распознать сообщение!";
-        }
-
-        private static List<string> SplitMessageIntoWords(string message)
-        {
-            return message.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
         }
     }
 }

@@ -7,6 +7,7 @@
 
 1) Найдено ключевое слово команды? 
     (list, ls, l, список, сп, удали) - учитывать количество слов в сообщении
+    
  
 2) Найдено ключевое слово даты? 
     (сегодня завтра послезавтра (допустить ошибки)) (уточнение времени справа)
@@ -17,8 +18,20 @@
 
 - - - - - - - - - - - - - - -
 
-[в 5] занятие английского
-сегодня [в 5] [в 15:00] [вечером]
-завтра
-послезавтра
-в понедельник пон пн
+[в 5] занятие английского 
+    .Contains("в").WithNext(_ => shortTimeParser(_)).IsFirst().IsNotLast()
+    
+сегодня [в 5] [в 15:00] [вечером] 
+    .ContainsAnyOut(["сегодня", "завтра", "послезавтра"], out DateTime)
+    .WithNext("в").WithNextOut(_ => shortTimeParser<T, T?>(_), out TimeSpan)
+    .WithNext("в").WithNextOut(_ => fullTimeParser<T, T?>(_), out TimeSpan)
+    .WithNextOut(_ => speechTimeParser<T, T?>(_), out TimeSpan)
+    
+в понедельник [в 5] [в 15:00] [вечером] 
+    .Contains("в").ContainsAnyOut(["понедельник", "вторник", "среда"], out DateTime)
+    .WithNext("в").WithNextOut(_ => shortTimeParser<T, T?>(_), out TimeSpan)
+    .WithNext("в").WithNextOut(_ => fullTimeParser<T, T?>(_), out TimeSpan)
+    .WithNextOut(_ => speechTimeParser<T, T?>(_), out TimeSpan)
+    
+1) Билдер основан на отношении И
+2) 

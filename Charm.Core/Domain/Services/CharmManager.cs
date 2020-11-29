@@ -54,35 +54,9 @@ namespace Charm.Core.Domain.Services
 
             await _context.SaveChangesAsync();
         }
-
-        // public async Task UpdateGist()
-        // {
-        //     throw new NotImplementedException();
-        // }
-        //
-        // public async Task UpdateReminder()
-        // {
-        //     throw new NotImplementedException();
-        // }
-        //
-        // public async Task DeleteGist()
-        // {
-        //     throw new NotImplementedException();
-        // }
-        //
-        // public async Task DeleteReminder()
-        // {
-        //     throw new NotImplementedException();
-        // }
-        //
-        // public async Task CreateSubGist()
-        // {
-        //     throw new NotImplementedException();
-        // }
-        //
-        // public async Task AddReminderToTask()
-        // {
-        //     throw new NotImplementedException();
-        // }
+        public async Task CreateReminder(ReminderRequest request)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
