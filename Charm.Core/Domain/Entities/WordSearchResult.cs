@@ -9,7 +9,7 @@ namespace Charm.Core.Domain.Entities
         public bool IsValid { get; }
         public Word? Word { get; }
 
-        public IWordGroupSearchResult ToGroup()
+        public IWordGroupSearchResult ToGroupSearch()
         {
             return new WordGroupSearchResult(Word, Word, IsValid);
         }
@@ -32,22 +32,22 @@ namespace Charm.Core.Domain.Entities
             IsValid = isValid;
         }
 
-        public bool Out<T>(Func<Word, T?> parser, out T? result) where T : struct
+        public IWordSearchResult Out<T>(Func<Word, T?> parser, out T? result) where T : struct
         {
             result = null;
-            if (!IsValid || Word is null) return false;
+            if (!IsValid || Word is null) return Invalid;
 
             result = parser(Word);
-            return true;
+            return Valid;
         }
 
-        public bool Out<T>(Func<Word, T?> parser, out T? result) where T : class
+        public IWordSearchResult Out<T>(Func<Word, T?> parser, out T? result) where T : class
         {
             result = null;
-            if (!IsValid || Word is null) return false;
+            if (!IsValid || Word is null) return Invalid;
 
             result = parser(Word);
-            return true;
+            return Valid;
         }
 
         public IWordSearchResult AtTheBeginning()

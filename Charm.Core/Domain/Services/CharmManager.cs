@@ -11,18 +11,18 @@ namespace Charm.Core.Domain.Services
 {
     public class CharmManager
     {
-        private readonly CharmDbContext _context;
+        public readonly CharmDbContext Context;
         private readonly ILogger<CharmManager> _logger;
 
         public CharmManager(CharmDbContext context, ILogger<CharmManager> logger)
         {
-            _context = context;
+            Context = context;
             _logger = logger;
         }
 
         public async Task<List<Gist>> GetGists(long userId)
         {
-            return await _context.Gists.Include(e => e!.Reminder).AsNoTracking().ToListAsync();
+            return await Context.Gists.Include(e => e!.Reminder).AsNoTracking().ToListAsync();
         }
 
         public async Task CreateGist(GistRequest request)
@@ -32,8 +32,8 @@ namespace Charm.Core.Domain.Services
                 Text = request.GistMessage,
                 UserId = request.ChatId
             };
-            _context.Gists.Add(gist);
-            await _context.SaveChangesAsync();
+            Context.Gists.Add(gist);
+            await Context.SaveChangesAsync();
         }
 
         public async Task CreateGistWithReminder(GistWithReminderRequest request)
@@ -50,9 +50,9 @@ namespace Charm.Core.Domain.Services
             };
             gist.Reminder = reminder;
 
-            _context.Gists.Add(gist);
+            Context.Gists.Add(gist);
 
-            await _context.SaveChangesAsync();
+            await Context.SaveChangesAsync();
         }
         public async Task CreateReminder(ReminderRequest request)
         {

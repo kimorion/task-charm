@@ -28,5 +28,9 @@ namespace Charm.Core.Domain.Entities
         public IWordGroupSearchResult WithPrevOut<T>(Func<Word, T?> parser, out T? parseResult) where T : class;
         public string? GetBeginning();
         public string? GetEnding();
+        public IWordGroupSearchResult SkipAnyNext(IEnumerable<string> searchWords);
+        public IWordGroupSearchResult SkipAnyNext(IEnumerable<Word> searchWords);
+        public IWordGroupSearchResult SkipAnyPrev(IEnumerable<string> searchWords);
+        public IWordGroupSearchResult SkipAnyPrev(IEnumerable<Word> searchWords);
     }
 }

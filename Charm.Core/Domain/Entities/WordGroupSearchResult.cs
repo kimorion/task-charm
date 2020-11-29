@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace Charm.Core.Domain.Entities
@@ -188,11 +189,54 @@ namespace Charm.Core.Domain.Entities
             while (word.Next is not null)
             {
                 word = word.Next;
-                builder.Insert(0, ' ');
-                builder.Insert(0, word.Value);
+                builder.Append(word.Value + " ");
             }
 
             return builder.ToString();
+        }
+
+        public IWordGroupSearchResult SkipAnyNext(IEnumerable<string> searchWords)
+        {
+            return SkipAnyNext(searchWords.Select(x => new Word(x)));
+        }
+
+        public IWordGroupSearchResult SkipAnyNext(IEnumerable<Word> searchWords)
+        {
+            if (!IsValid || Last?.Next is null) return this;
+
+            Word last = Last;
+            while (last.Next is not null)
+            {
+                if (searchWords.Contains(last.Next))
+                {
+                    last = last.Next;
+                }
+                else break;
+            }
+
+            return new WordGroupSearchResult(First, last, IsValid);
+        }
+
+        public IWordGroupSearchResult SkipAnyPrev(IEnumerable<string> searchWords)
+        {
+            return SkipAnyPrev(searchWords.Select(x => new Word(x)));
+        }
+
+        public IWordGroupSearchResult SkipAnyPrev(IEnumerable<Word> searchWords)
+        {
+            if (!IsValid || First?.Prev is null) return this;
+
+            Word first = First;
+            while (first.Prev is not null)
+            {
+                if (searchWords.Contains(first.Prev))
+                {
+                    first = first.Prev;
+                }
+                else break;
+            }
+
+            return new WordGroupSearchResult(first, Last, IsValid);
         }
 
         public IEnumerator<Word> GetEnumerator()

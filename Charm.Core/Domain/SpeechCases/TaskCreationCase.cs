@@ -17,37 +17,45 @@ namespace Charm.Core.Domain.SpeechCases
 
         public override bool TryParse(MessageInfo message)
         {
-            // [в] (сегодня, среду) [в 5] [в 15:00] [вечером] 
-            // .ContainsAnyOut(["сегодня", "завтра", "послезавтра"], out DateTime)
-            //     .WithNext("в").WithNextOut(_ => shortTimeParser<T, T?>(_), out TimeSpan)
-            //     .WithNext("в").WithNextOut(_ => fullTimeParser<T, T?>(_), out TimeSpan)
-            //     .WithNextOut(_ => speechTimeParser<T, T?>(_), out TimeSpan)
-
-            var startSearch = message.SearchAnySingle(CharmParser.DayNames);
-            if (!startSearch.IsValid) return false;
-
-            startSearch.Out(CharmParser.ParseDay, out _date);
-
-            startSearch.ToGroup().SkipNext("в").WithNextOut(CharmParser.ParseTime, out _time)
-                .Build(out var searchWithTime);
-
-            if (searchWithTime.SkipPrev("в").NotAtTheBeginning().Build(out var searchWithText))
+            var daySearch = message.SearchAnySingle(CharmParser.DayNames);
+            if (!daySearch.IsValid)
             {
-                _text = searchWithText.GetBeginning();
+                _text = message.OriginalString;
                 return true;
             }
 
-            if (searchWithTime.NotAtTheEnd().IsValid)
+            var trashWords = new[] {"в", "во", "вечером", "утром", "днем", "днём"};
+            
+            if (daySearch.Out(CharmParser.ParseDay, out _date).ToGroupSearch().Build(out var dateSearch))
             {
-                _text = searchWithText.GetEnding();
+                dateSearch = dateSearch
+                    // .SkipAnyPrev(new[] {"в", "во"})
+                    // .SkipAnyNext(new[] {"вечером", "утром", "днем", "днём"});
+                    .SkipAnyPrev(trashWords)
+                    .SkipAnyNext(trashWords);
+            }
+            else
+            {
+                dateSearch = daySearch.ToGroupSearch();
+            }
+
+            if (dateSearch
+                .SkipNext("в")
+                .WithNextOut(CharmParser.ParseTime, out _time)
+                .SkipAnyNext(new[] {"вечером", "утром", "днем", "днём"})
+                .Build(out var dateTimeSearch))
+            {
+                _text = dateTimeSearch.GetEnding() ?? dateTimeSearch.GetBeginning();
                 return true;
             }
 
-            return false;
+            _text = dateSearch.GetEnding() ?? dateSearch.GetBeginning();
+            return _text != null;
         }
 
         public override async Task<string> ApplyAndRespond(long userId, CharmManager manager)
         {
+            return $"TaskCreation {_text} {_date} {_time}";
             if (_text is null) throw new Exception();
 
             if (_date is not null)

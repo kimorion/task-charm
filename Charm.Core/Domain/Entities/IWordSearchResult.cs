@@ -8,12 +8,12 @@ namespace Charm.Core.Domain.Entities
         public bool IsValid { get; }
         public Word? Word { get; }
 
-        public bool Out<T>(Func<Word, T?> parser, out T? result) where T : struct;
-        public bool Out<T>(Func<Word, T?> parser, out T? result) where T : class;
+        public IWordSearchResult Out<T>(Func<Word, T?> parser, out T? result) where T : struct;
+        public IWordSearchResult Out<T>(Func<Word, T?> parser, out T? result) where T : class;
         public IWordSearchResult AtTheBeginning();
         public IWordSearchResult NotAtTheBeginning();
         public IWordSearchResult AtTheEnd();
         public IWordSearchResult NotAtTheEnd();
-        public IWordGroupSearchResult ToGroup();
+        public IWordGroupSearchResult ToGroupSearch();
     }
 }

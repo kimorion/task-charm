@@ -38,8 +38,6 @@ namespace Charm.Application.Controllers
         [HttpPost]
         public async Task<IActionResult> Update([Required] [FromBody] Update update)
         {
-            await _userService.Initialize(update.Message.From);
-
             string? response = null;
             if (response is null && update.Type != UpdateType.Message)
             {
@@ -53,11 +51,13 @@ namespace Charm.Application.Controllers
 
             if (response is null)
             {
+                await _userService.Initialize(update.Message.From);
                 response = await _interpreter.TakeMessage(update.Message);
             }
 
             _logger.LogDebug(response);
-            await _client.SendTextMessageAsync(update.Message.Chat.Id, response);
+            if (update.Message != null)
+                await _client.SendTextMessageAsync(update.Message.From.Id, response);
             return Ok();
         }
     }
