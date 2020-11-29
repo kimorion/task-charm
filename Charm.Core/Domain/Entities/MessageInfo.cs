@@ -34,49 +34,72 @@ namespace Charm.Core.Domain.Entities
         }
 
 
-        public IEnumerable<IWordSearchResult> Contains(string word)
+        public IEnumerable<IWordSearchResult> Search(string word)
         {
-            throw new NotImplementedException();
+            return Words.Where(_ => _ == word).Select(_ => new WordSearchResult(_, true));
         }
 
-        public IWordSearchResult ContainsSingle(Word word)
+        public IWordSearchResult SearchSingle(Word word)
         {
-            throw new NotImplementedException();
+            var list = Words.Where(_ => _ == word).ToList();
+            return list.Count switch
+            {
+                0 => new WordSearchResult(null, false),
+                1 => new WordSearchResult(list[0], true),
+                _ => new WordSearchResult(list[0], false)
+            };
         }
 
-        public IWordSearchResult ContainsFirst(Word word)
+        public IWordSearchResult SearchFirst(Word word)
         {
-            throw new NotImplementedException();
+            var list = Words.Where(_ => _ == word).ToList();
+            return list.Count switch
+            {
+                0 => new WordSearchResult(null, false),
+                _ => new WordSearchResult(list[0], false)
+            };
         }
 
-        public IWordSearchResult ContainsSingle(string word)
+        public IWordSearchResult SearchAnySingle(IEnumerable<string> searchWords)
         {
-            throw new NotImplementedException();
+            var list = Words.Where(_ => searchWords.Contains(_.Value)).ToList();
+            return list.Count switch
+            {
+                0 => new WordSearchResult(null, false),
+                1 => new WordSearchResult(list[0], true),
+                _ => new WordSearchResult(list[0], false)
+            };
         }
 
-        public IWordSearchResult ContainsFirst(string word)
+        public IWordSearchResult SearchAnySingle(IEnumerable<Word> word)
         {
-            throw new NotImplementedException();
+            var list = Words.Where(word.Contains).ToList();
+            return list.Count switch
+            {
+                0 => new WordSearchResult(null, false),
+                1 => new WordSearchResult(list[0], true),
+                _ => new WordSearchResult(list[0], false)
+            };
         }
 
-        public IWordSearchResult ContainsAnySingle(IEnumerable<string> word)
+        public IWordSearchResult SearchAnyFirst(IEnumerable<string> searchWords)
         {
-            throw new NotImplementedException();
+            var list = Words.Where(_ => searchWords.Contains(_.Value)).ToList();
+            return list.Count switch
+            {
+                0 => new WordSearchResult(null, false),
+                _ => new WordSearchResult(list[0], false)
+            };
         }
 
-        public IWordSearchResult ContainsAnyFirst(IEnumerable<string> word)
+        public IWordSearchResult SearchAnyFirst(IEnumerable<Word> searchWords)
         {
-            throw new NotImplementedException();
-        }
-
-        public IWordSearchResult ContainsAnySingle(IEnumerable<Word> word)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IWordSearchResult ContainsAnyFirst(IEnumerable<Word> word)
-        {
-            throw new NotImplementedException();
+            var list = Words.Where(searchWords.Contains).ToList();
+            return list.Count switch
+            {
+                0 => new WordSearchResult(null, false),
+                _ => new WordSearchResult(list[0], false)
+            };
         }
     }
 }

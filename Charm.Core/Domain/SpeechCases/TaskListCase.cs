@@ -15,7 +15,7 @@ namespace Charm.Core.Domain.SpeechCases
         public override bool TryParse(MessageInfo message)
         {
             // задачи
-            var startSearch = message.ContainsSingle("задачи");
+            var startSearch = message.SearchSingle("задачи");
             if (!startSearch.IsValid) return false;
 
             // задачи [на сегодня]

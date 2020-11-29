@@ -23,7 +23,7 @@ namespace Charm.Core.Domain.SpeechCases
             //     .WithNext("в").WithNextOut(_ => fullTimeParser<T, T?>(_), out TimeSpan)
             //     .WithNextOut(_ => speechTimeParser<T, T?>(_), out TimeSpan)
 
-            var startSearch = message.ContainsAnySingle(CharmParser.DayNames);
+            var startSearch = message.SearchAnySingle(CharmParser.DayNames);
             if (!startSearch.IsValid) return false;
 
             startSearch.Out(CharmParser.ParseDay, out _date);
