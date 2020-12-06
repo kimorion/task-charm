@@ -18,7 +18,7 @@ namespace Charm.Core.Domain.SpeechCases
 
         private ListCreationType? _listCreationType = null!;
         private DateTimeOffset? _date;
-        private bool result = false;
+        private bool _result = false;
 
         public TaskListCase(CharmInterpreter interpreter)
         {
@@ -32,13 +32,13 @@ namespace Charm.Core.Domain.SpeechCases
                 @"задачи || таски || (список (задач || тасков)) тест"
             );
 
-            result = _interpreter.TryInterpret(message.OriginalString);
+            _result = _interpreter.TryInterpret(message.OriginalString);
             return true;
         }
 
         public override async Task<string> ApplyAndRespond(long userId, CharmManager manager)
         {
-            return result ? "Matched!" : "Couldn't match!";
+            return _result ? "Matched!" : "Couldn't match!";
 
             var gists = await manager.Context.Gists.Where(g => g.UserId == userId).Include(g => g.Reminder)
                 .ToListAsync();

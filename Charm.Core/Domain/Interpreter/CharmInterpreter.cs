@@ -211,7 +211,7 @@ namespace Charm.Core.Domain.Interpreter
             if (CurrentLevel.IsValid)
             {
                 var levelDescription = isOptional ? "optional" : "mandatory";
-                _logger.LogDebug($"Opening new {levelDescription} level");
+                _logger.LogDebug($"Opening new {levelDescription} level: {_levels.Count + 1}");
 
                 _levels.Push(new Level(CurrentLevel.StringCaret, isOptional: isOptional));
                 return State.ReadToken;
@@ -259,7 +259,8 @@ namespace Charm.Core.Domain.Interpreter
 
             var closingLevelDescription = closingLevel.IsOptional ? "optional" : "mandatory";
             var closingLevelValidity = closingLevel.IsValid ? "valid" : "invalid";
-            _logger.LogDebug($"closing {closingLevelDescription} {closingLevelValidity} level");
+            _logger.LogDebug(
+                $"closing {closingLevelDescription} {closingLevelValidity} level, current level: {_levels.Count}");
 
             return CurrentLevel.IsValid ? State.ReadToken : State.ExitCurrentLevel;
         }
@@ -305,6 +306,9 @@ namespace Charm.Core.Domain.Interpreter
                 return State.Error;
             }
 
+            _logger.LogDebug($"Got tokens: {string.Join(", ", patternTokens)}");
+            _logger.LogDebug($"Got words: {string.Join(", ", stringWords)}");
+
             _patternWords = patternTokens;
             _stringWords = stringWords;
             _levels.Clear();
@@ -327,11 +331,6 @@ namespace Charm.Core.Domain.Interpreter
         private string CurrentPatternToken
         {
             get => _patternWords[_patternCaret];
-        }
-
-        private void LogArray(string[] array)
-        {
-            _logger.LogDebug($"{string.Join(", ", array)}");
         }
     }
 }
