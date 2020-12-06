@@ -15,9 +15,23 @@ namespace Charm.Core.Domain.SpeechCases
     {
         private ListCreationType? _listCreationType = null!;
         private DateTimeOffset? _date;
+        private bool result = false;
 
         public override bool TryParse(MessageInfo message)
         {
+            // CharmInterpreter interpreter = new CharmInterpreter(
+            //     @"сегодня [ 
+            //                 [  в (5)>shortTimeParser часов || в (15:00)>fullTimeParser   ] 
+            //                 [ (вечером)>wordTimeParser ] 
+            //               ] ");
+
+            CharmInterpreter interpreter = new CharmInterpreter();
+            interpreter.AddParser("testParser", str => true);
+            interpreter.SetTemplate("сегодня || завтра || (parameter)>testParser");
+
+            result = interpreter.TryInterpret(message.OriginalString);
+            return true;
+
             // задачи
             var startSearch = message.SearchSingle("задачи");
             if (!startSearch.IsValid) return false;
@@ -38,6 +52,8 @@ namespace Charm.Core.Domain.SpeechCases
 
         public override async Task<string> ApplyAndRespond(long userId, CharmManager manager)
         {
+            return result ? "Yes" : "No";
+
             var gists = await manager.Context.Gists.Where(g => g.UserId == userId).Include(g => g.Reminder)
                 .ToListAsync();
 

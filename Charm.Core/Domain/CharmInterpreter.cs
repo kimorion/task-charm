@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Charm.Core.Domain.Entities;
+using Microsoft.Extensions.Logging;
 
 namespace Charm.Core.Domain
 {
@@ -10,8 +12,11 @@ namespace Charm.Core.Domain
         private enum State
         {
             Reset,
-            Read,
-            Exit,
+            ReadTemplate,
+            ReadTemplateAndSave,
+            ReadAndSaveParserName,
+            SaveParserCall,
+            ExitCurrentLevel,
             Stop,
             Error,
         }
@@ -25,19 +30,27 @@ namespace Charm.Core.Domain
                 get { return _innerStatus && parserCallQueue.All(call => call.Item2(call.Item1)); }
             }
 
-            public Word CurrentWord { get; set; }
+            public void SetInvalid() => _innerStatus = false;
+            public void SetValid() => _innerStatus = true;
+            public void SetInnerStatus(bool status) => _innerStatus = status;
+
             public Queue<Tuple<string, Func<string, bool>>>
                 parserCallQueue = new Queue<Tuple<string, Func<string, bool>>>();
+            public uint StringCaret;
 
-            public Level(Word currentWord)
+            public Level(uint stringCaret)
             {
-                CurrentWord = currentWord;
+                StringCaret = stringCaret;
                 _innerStatus = true;
             }
         }
 
-        public CharmInterpreter()
+        public CharmInterpreter(string? template = null)
         {
+            if (template is not null)
+            {
+                SetTemplate(template);
+            }
         }
 
         public void AddArray(string name, IEnumerable<string> array)
@@ -53,19 +66,15 @@ namespace Charm.Core.Domain
         public void SetTemplate(string template)
         {
             //todo check brackets count
-            _template = template ?? throw new ArgumentNullException(nameof(template));
+            _originalTemplate = template ?? throw new ArgumentNullException(nameof(template));
         }
 
-        public void Reset()
-        {
-            _state = State.Reset;
-            _caret = 0;
-        }
-
-        public void Interpret(string str)
+        public bool TryInterpret(string str)
         {
             _originalString = str ?? throw new ArgumentNullException(nameof(str));
-            Start();
+
+            _state = State.Reset;
+            return Start();
         }
 
         private Dictionary<string, IEnumerable<string>>
@@ -73,45 +82,220 @@ namespace Charm.Core.Domain
         private Dictionary<string, Func<string, bool>>
             parsers = new Dictionary<string, Func<string, bool>>();
         private string _originalString = "";
+        private string _originalTemplate = "";
 
         private State _state = State.Reset;
         private Stack<Level> _levels = new Stack<Level>();
-        private string _template = "";
         private string? _errorMessage;
-        private uint _caret = 0;
+        private string[] _templateWords = Array.Empty<string>();
+        private string[] _stringWords = Array.Empty<string>();
+        private uint _templateCaret = 0;
+        private Queue<string> _templateQueue = new Queue<string>();
 
-
-        private void Start()
+        private bool Start()
         {
-            if (_state != State.Reset || _caret != 0) throw new InvalidOperationException("Interpreter not reset");
+            if (_state != State.Reset)
+                throw new InvalidOperationException("Interpreter not reset");
 
             while (_state != State.Stop)
             {
                 _state = _state switch
                 {
-                    State.Reset => State.Read,
-                    State.Read => Read(),
-                    State.Exit => Exit(),
-                    State.Stop => Error("interpreter was in stop state"),
-                    State.Error => Error(),
-                    _ => Error("Impossible interpreter state")
+                    State.Reset => Reset(),
+                    State.ReadTemplate => ReadTemplate(),
+                    State.ReadTemplateAndSave => ReadTemplateAndSave(),
+                    State.ReadAndSaveParserName => ReadAndSaveParserName(),
+                    State.ExitCurrentLevel => ExitCurrentLevel(),
+                    State.SaveParserCall => SaveParserCall(),
+                    State.Error => ReturnError(),
+                    _ => ReturnError("Impossible interpreter state")
                 };
             }
+
+            return CurrentLevel.IsValid;
         }
 
-        private State Read()
+        private State ReadTemplate()
+        {
+            if (_templateCaret == _templateWords.Length)
+            {
+                return State.Stop;
+            }
+
+            var nextWord = CurrentTemplateWord;
+            _templateCaret++;
+
+            var result = nextWord switch
+            {
+                "[" => OpenLevel(),
+                "]" => CloseLevel(),
+                "(" => State.ReadTemplateAndSave,
+                ">" => State.ReadAndSaveParserName,
+                "||" => TryAnotherGroup(),
+                _ => CheckWord(nextWord),
+            };
+
+            return result;
+        }
+
+        private State ReadTemplateAndSave()
+        {
+            if (_templateCaret == _templateWords.Length)
+            {
+                _errorMessage = "non closed capture group!";
+                return State.Error;
+            }
+
+            var currentTemplateWord = CurrentTemplateWord;
+            _templateCaret++;
+            if (currentTemplateWord == ")") return State.ReadTemplate;
+            
+            _templateQueue.Enqueue(currentTemplateWord);
+            return State.ReadTemplateAndSave;
+        }
+
+        private State ReadAndSaveParserName()
+        {
+            if (_templateCaret == _templateWords.Length)
+            {
+                _errorMessage = "parser name empty!";
+                return State.Error;
+            }
+
+            _templateQueue.Enqueue(CurrentTemplateWord);
+            _templateCaret++;
+            return State.SaveParserCall;
+        }
+
+        private State SaveParserCall()
+        {
+            var parserParameters = _templateQueue.Dequeue(); // for future
+            var parserName = _templateQueue.Dequeue();
+
+            if (!parsers.TryGetValue(parserName, out var parser))
+            {
+                _errorMessage = "parser not found";
+                return State.Error;
+            }
+
+            var stringWord = CurrentStringWord;
+            CurrentLevel.StringCaret++;
+
+            CurrentLevel.parserCallQueue.Enqueue(Tuple.Create(stringWord, parser));
+            return State.ReadTemplate;
+        }
+
+        private State CheckWord(string templateWord)
+        {
+            if (CurrentLevel.StringCaret == _stringWords.Length)
+            {
+                CurrentLevel.SetInvalid();
+                return State.ExitCurrentLevel;
+            }
+
+            var nextWord = CurrentStringWord;
+            if (nextWord != templateWord)
+            {
+                CurrentLevel.SetInvalid();
+                return State.ExitCurrentLevel;
+            }
+
+            CurrentLevel.StringCaret++;
+            return State.ReadTemplate;
+        }
+
+        private State TryAnotherGroup()
+        {
+            if (CurrentLevel.IsValid)
+            {
+                return State.ExitCurrentLevel;
+            }
+
+            CurrentLevel.SetValid();
+            return State.ReadTemplate;
+        }
+
+        private State CloseLevel()
         {
             throw new NotImplementedException();
         }
 
-        private State Error(string? message = null)
+        private State OpenLevel()
+        {
+            // _levels.Push(new Level());
+            throw new NotImplementedException();
+        }
+
+        private State ReturnError(string? message = null)
         {
             throw new Exception(message ?? _errorMessage ?? "Unknown interpreter error");
         }
 
-        private State Exit()
+        private State ExitCurrentLevel()
         {
-            throw new NotImplementedException();
+            if (_templateCaret == _templateWords.Length)
+            {
+                return State.Stop;
+            }
+
+            var templateWord = CurrentTemplateWord;
+            if (templateWord == "]" || templateWord == "||")
+            {
+                return State.ReadTemplate;
+            }
+
+            _templateCaret++;
+            return State.ExitCurrentLevel;
+        }
+
+        private State Reset()
+        {
+            var templateWords =
+                Regex.Split(_originalTemplate, @"([()\[\]>]|\|\|)|\s+", RegexOptions.Compiled)
+                    .Where(w => !string.IsNullOrWhiteSpace(w)).ToArray();
+            if (templateWords.Length == 0)
+            {
+                _errorMessage = "template string was empty!";
+                return State.Error;
+            }
+
+            var stringWords = _originalString.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (stringWords.Length == 0)
+            {
+                _errorMessage = "original string was empty!";
+                return State.Error;
+            }
+
+            LogArray(stringWords);
+            LogArray(templateWords);
+
+            _templateWords = templateWords;
+            _stringWords = stringWords;
+            _levels.Clear();
+            _levels.Push(new Level(0));
+            _templateCaret = 0;
+
+            return State.ReadTemplate;
+        }
+
+        private Level CurrentLevel
+        {
+            get => _levels.Peek();
+        }
+
+        private string CurrentStringWord
+        {
+            get => _stringWords[CurrentLevel.StringCaret];
+        }
+
+        private string CurrentTemplateWord
+        {
+            get => _templateWords[_templateCaret];
+        }
+
+        private void LogArray(string[] array)
+        {
+            Console.WriteLine($"{string.Join(", ", array)}");
         }
     }
 }
