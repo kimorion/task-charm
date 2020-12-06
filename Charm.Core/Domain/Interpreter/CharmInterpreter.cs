@@ -90,7 +90,7 @@ namespace Charm.Core.Domain.Interpreter
                 ")" => CloseLevel(),
                 "{" => State.ReadAndSaveToken,
                 ">" => State.ReadAndSaveParserName,
-                "||" => TryAnotherGroup(),
+                "||" => TryNextGroup(),
                 _ => CheckNextWordWithToken(nextWord),
             };
 
@@ -193,16 +193,16 @@ namespace Charm.Core.Domain.Interpreter
             return State.ReadToken;
         }
 
-        private State TryAnotherGroup()
+        private State TryNextGroup()
         {
             if (CurrentLevel.IsValid)
             {
-                _logger.LogDebug(" || > skipping another group...");
+                _logger.LogDebug(" || > skipping next group...");
                 return State.ExitCurrentLevel;
             }
 
             CurrentLevel.Reset();
-            _logger.LogDebug(" || > trying another group...");
+            _logger.LogDebug(" || > trying next group...");
             return State.ReadToken;
         }
 
