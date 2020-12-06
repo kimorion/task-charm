@@ -56,8 +56,8 @@ namespace Charm.Core.Domain.Interpreter
                 _state = _state switch
                 {
                     State.Reset => ResetInterpreter(),
-                    State.ReadPatternToken => ReadPatternToken(),
-                    State.ReadAndSavePatternToken => ReadAndSavePatternToken(),
+                    State.ReadToken => ReadPatternToken(),
+                    State.ReadAndSaveToken => ReadAndSavePatternToken(),
                     State.ReadAndSaveParserName => ReadAndSaveParserName(),
                     State.ExitCurrentLevel => ExitCurrentLevel(),
                     State.SkipLevel => SkipCurrentLevel(),
@@ -88,7 +88,7 @@ namespace Charm.Core.Domain.Interpreter
                 "]" => CloseLevel(),
                 "(" => OpenLevel(isOptional: false),
                 ")" => CloseLevel(),
-                "{" => State.ReadAndSavePatternToken,
+                "{" => State.ReadAndSaveToken,
                 ">" => State.ReadAndSaveParserName,
                 "||" => TryAnotherGroup(),
                 _ => CheckNextWordWithToken(nextWord),
@@ -107,10 +107,10 @@ namespace Charm.Core.Domain.Interpreter
 
             var currentPatternToken = CurrentPatternToken;
             _patternCaret++;
-            if (currentPatternToken == "}") return State.ReadPatternToken;
+            if (currentPatternToken == "}") return State.ReadToken;
 
             _patternQueue.Enqueue(currentPatternToken);
-            return State.ReadAndSavePatternToken;
+            return State.ReadAndSaveToken;
         }
 
         private State ReadAndSaveParserName()
@@ -168,7 +168,7 @@ namespace Charm.Core.Domain.Interpreter
             }
 
             CurrentLevel.ParserCallQueue.Enqueue(Tuple.Create(parserString, parser));
-            return State.ReadPatternToken;
+            return State.ReadToken;
         }
 
         private State CheckNextWordWithToken(string token)
@@ -176,37 +176,45 @@ namespace Charm.Core.Domain.Interpreter
             if (CurrentLevel.StringCaret == _stringWords.Length)
             {
                 CurrentLevel.SetInvalid();
+                _logger.LogDebug("Check failed: string too short");
                 return State.ExitCurrentLevel;
             }
 
             var nextWord = CurrentStringWord;
             if (nextWord != token)
             {
+                _logger.LogDebug($"Check failed: {nextWord} != {token}");
                 CurrentLevel.SetInvalid();
                 return State.ExitCurrentLevel;
             }
 
             CurrentLevel.StringCaret++;
-            return State.ReadPatternToken;
+            _logger.LogDebug($"Check succeeded: {nextWord} = {token}");
+            return State.ReadToken;
         }
 
         private State TryAnotherGroup()
         {
             if (CurrentLevel.IsValid)
             {
+                _logger.LogDebug(" || > skipping another group...");
                 return State.ExitCurrentLevel;
             }
 
             CurrentLevel.Reset();
-            return State.ReadPatternToken;
+            _logger.LogDebug(" || > trying another group...");
+            return State.ReadToken;
         }
 
         private State OpenLevel(bool isOptional)
         {
             if (CurrentLevel.IsValid)
             {
+                var levelDescription = isOptional ? "optional" : "mandatory";
+                _logger.LogDebug($"Opening new {levelDescription} level");
+
                 _levels.Push(new Level(CurrentLevel.StringCaret, isOptional: isOptional));
-                return State.ReadPatternToken;
+                return State.ReadToken;
             }
             else
             {
@@ -228,27 +236,32 @@ namespace Charm.Core.Domain.Interpreter
             }
 
             _patternCaret++;
-            return State.ReadPatternToken;
+            return State.ReadToken;
         }
 
         private State CloseLevel()
         {
             if (_levels.Count == 1)
             {
-                return State.ReadPatternToken;
+                return State.ReadToken;
             }
 
             var closingLevel = _levels.Pop();
+
             if (closingLevel.IsValid)
             {
                 CurrentLevel.StringCaret = closingLevel.StringCaret;
             }
             else if (!closingLevel.IsOptional)
             {
-                CurrentLevel.SetInnerStatus(CurrentLevel.IsValid && closingLevel.IsValid);
+                CurrentLevel.SetInvalid();
             }
 
-            return State.ReadPatternToken;
+            var closingLevelDescription = closingLevel.IsOptional ? "optional" : "mandatory";
+            var closingLevelValidity = closingLevel.IsValid ? "valid" : "invalid";
+            _logger.LogDebug($"closing {closingLevelDescription} {closingLevelValidity} level");
+
+            return CurrentLevel.IsValid ? State.ReadToken : State.ExitCurrentLevel;
         }
 
         private State ReturnError(string? message = null)
@@ -265,9 +278,9 @@ namespace Charm.Core.Domain.Interpreter
             }
 
             var patternToken = CurrentPatternToken;
-            if (patternToken == (CurrentLevel.IsOptional ? "]" : "}") || patternToken == "||")
+            if (patternToken == (CurrentLevel.IsOptional ? "]" : ")") || patternToken == "||")
             {
-                return State.ReadPatternToken;
+                return State.ReadToken;
             }
 
             _patternCaret++;
@@ -292,16 +305,13 @@ namespace Charm.Core.Domain.Interpreter
                 return State.Error;
             }
 
-            LogArray(stringWords);
-            LogArray(patternTokens);
-
             _patternWords = patternTokens;
             _stringWords = stringWords;
             _levels.Clear();
             _levels.Push(new Level(0, isOptional: false));
             _patternCaret = 0;
 
-            return State.ReadPatternToken;
+            return State.ReadToken;
         }
 
         private Level CurrentLevel

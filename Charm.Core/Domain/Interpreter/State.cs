@@ -5,8 +5,8 @@
         private enum State
         {
             Reset,
-            ReadPatternToken,
-            ReadAndSavePatternToken,
+            ReadToken,
+            ReadAndSaveToken,
             ReadAndSaveParserName,
             SaveParserCall,
             ExitCurrentLevel,

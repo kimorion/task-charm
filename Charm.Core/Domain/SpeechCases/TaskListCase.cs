@@ -38,7 +38,7 @@ namespace Charm.Core.Domain.SpeechCases
 
         public override async Task<string> ApplyAndRespond(long userId, CharmManager manager)
         {
-            return result ? "Yes" : "No";
+            return result ? "Matched!" : "Couldn't match!";
 
             var gists = await manager.Context.Gists.Where(g => g.UserId == userId).Include(g => g.Reminder)
                 .ToListAsync();
