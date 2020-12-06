@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Charm.Core.Domain.Entities;
+using Charm.Core.Domain.Interpreter;
 using Charm.Core.Domain.Services;
 using Charm.Core.Domain.Utils;
 using Microsoft.EntityFrameworkCore;
@@ -13,54 +14,25 @@ namespace Charm.Core.Domain.SpeechCases
 {
     public class TaskListCase : SpeechCase
     {
+        private readonly CharmInterpreter _interpreter;
+
         private ListCreationType? _listCreationType = null!;
         private DateTimeOffset? _date;
         private bool result = false;
 
+        public TaskListCase(CharmInterpreter interpreter)
+        {
+            _interpreter = interpreter;
+        }
+
         public override bool TryParse(MessageInfo message)
         {
-            CharmInterpreter interpreter = new CharmInterpreter(
-                @"сегодня [ 
-                            [  в (5)>shortTimeParser часов || в (15:00)>fullTimeParser   ] 
-                            [ (вечером)>wordTimeParser ] 
-                          ] ");
+            _interpreter.SetTemplate
+            (
+                @"задачи || таски || (список (задач || тасков)) тест"
+            );
 
-            interpreter.AddParser("shortTimeParser", str =>
-            {
-                Console.WriteLine("shortTimeParser");
-                return true;
-            });
-            
-            interpreter.AddParser("fullTimeParser", str =>
-            {
-                Console.WriteLine("fullTimeParser");
-                return true;
-            });
-            
-            interpreter.AddParser("wordTimeParser", str =>
-            {
-                Console.WriteLine("wordTimeParser");
-                return true;
-            });
-
-            result = interpreter.TryInterpret(message.OriginalString);
-            return true;
-
-            // задачи
-            var startSearch = message.SearchSingle("задачи");
-            if (!startSearch.IsValid) return false;
-
-            // задачи [на сегодня]
-            startSearch.ToGroupSearch().SkipNext("на").WithNextOut(CharmParser.ParseDay, out _date);
-
-            // [[не] сделанные] задачи
-            if (startSearch.ToGroupSearch().WithPrev("сделанные").Build(out var typeSearch))
-            {
-                _listCreationType = typeSearch.WithPrev("не").IsValid ? ListCreationType.Undone : ListCreationType.Done;
-                return true;
-            }
-
-            _listCreationType = ListCreationType.Undone;
+            result = _interpreter.TryInterpret(message.OriginalString);
             return true;
         }
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Charm.Core.Domain.Entities;
+using Charm.Core.Domain.Interpreter;
 using Charm.Core.Domain.SpeechCases;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot.Types;
@@ -15,16 +16,19 @@ namespace Charm.Core.Domain.Services
         private readonly CharmManager _manager;
         private readonly UserService _userService;
         private readonly List<SpeechCase> SpeechCases;
+        private readonly CharmInterpreter _interpreter;
 
-        public CharmInterpreterService(CharmManager manager, ILogger<CharmInterpreterService> logger, UserService userService)
+        public CharmInterpreterService(CharmManager manager, ILogger<CharmInterpreterService> logger,
+            UserService userService, CharmInterpreter interpreter)
         {
             _manager = manager;
             _logger = logger;
             _userService = userService;
+            _interpreter = interpreter;
 
             SpeechCases = new List<SpeechCase>
             {
-                new TaskListCase(),
+                new TaskListCase(_interpreter),
                 new TaskCreationCase(),
             };
         }

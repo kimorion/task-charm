@@ -1,4 +1,5 @@
 using AutoMapper;
+using Charm.Core.Domain.Interpreter;
 using Charm.Core.Domain.Services;
 using Charm.Core.Infrastructure;
 using Microsoft.AspNetCore.Builder;
@@ -43,6 +44,7 @@ namespace Charm.Application
             services.AddTransient<CharmInterpreterService>();
             services.AddTransient<CharmManager>();
             services.AddTransient<CharmNotifierService>();
+            services.AddTransient<CharmInterpreter>();
 
             services.AddTransient<ITelegramBotClient, TelegramBotClient>(provider =>
             {
