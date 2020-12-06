@@ -91,10 +91,24 @@ namespace Charm.Core.Domain.Interpreter
                 "{" => State.ReadAndSaveToken,
                 ">" => State.ReadAndSaveParserName,
                 "||" => TryNextGroup(),
+                "#" => MustBeAtTheEnd(),
                 _ => CheckNextWordWithToken(nextWord),
             };
 
             return result;
+        }
+
+        private State MustBeAtTheEnd()
+        {
+            if (CurrentLevel.StringCaret != _stringWords.Length)
+            {
+                CurrentLevel.SetInvalid();
+                _logger.LogDebug("# => check failed, not at the end of the string");
+                return State.ExitCurrentLevel;
+            }
+
+            _logger.LogDebug("# => check success");
+            return State.ReadToken;
         }
 
         private State ReadAndSavePatternToken()
@@ -291,7 +305,7 @@ namespace Charm.Core.Domain.Interpreter
         private State ResetInterpreter()
         {
             var patternTokens =
-                Regex.Split(_originalPattern, @"([()\[\]>]|\|\|)|\s+", RegexOptions.Compiled)
+                Regex.Split(_originalPattern, @"([()\[\]{}#>]|\|\|)|\s+", RegexOptions.Compiled)
                     .Where(w => !string.IsNullOrWhiteSpace(w)).ToArray();
             if (patternTokens.Length == 0)
             {

@@ -16,7 +16,7 @@ namespace Charm.Core.Domain.SpeechCases
     {
         private readonly CharmInterpreter _interpreter;
 
-        private ListCreationType? _listCreationType = null!;
+        private ListCreationType _listCreationType = ListCreationType.Undone;
         private DateTimeOffset? _date;
         private bool _result = false;
 
@@ -29,18 +29,39 @@ namespace Charm.Core.Domain.SpeechCases
         {
             _interpreter.SetPattern
             (
-                @"задачи || таски || (список (задач || тасков)) тест"
+                @" [ {1}>listTypeParser ] (задачи || дела || (список [{1}>listTypeParser] (задач || дел)) [на {1}>dateParser]) #"
             );
+            _interpreter.AddParser("listTypeParser", ListTypeParser);
+            _interpreter.AddParser("dateParser", DateParser);
 
             _result = _interpreter.TryInterpret(message.OriginalString);
             return true;
         }
 
+        private bool DateParser(string str)
+        {
+            _date = CharmParser.ParseDay(str);
+            return _date != null;
+        }
+
+        private bool ListTypeParser(string s)
+        {
+            if (s == "все" || s == "всех")
+            {
+                _listCreationType = ListCreationType.All;
+                return true;
+            }
+
+            return false;
+        }
+
         public override async Task<string> ApplyAndRespond(long userId, CharmManager manager)
         {
-            return _result ? "Matched!" : "Couldn't match!";
+            // return _result ? "Matched!" : "Couldn't match!";
 
-            var gists = await manager.Context.Gists.Where(g => g.UserId == userId).Include(g => g.Reminder)
+            var gists = await manager.Context.Gists
+                .Where(g => _listCreationType == ListCreationType.All || g.IsDone).Where(g => g.UserId == userId)
+                .Include(g => g.Reminder)
                 .ToListAsync();
 
             StringBuilder builder = new StringBuilder();
@@ -62,7 +83,7 @@ namespace Charm.Core.Domain.SpeechCases
 
         enum ListCreationType
         {
-            Done,
+            All,
             Undone
         }
     }
