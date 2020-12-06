@@ -16,20 +16,20 @@ namespace Charm.Application.Controllers
     public class TelegramController : ControllerBase
     {
         private readonly ITelegramBotClient _client;
-        private readonly CharmInterpreter _interpreter;
+        private readonly CharmInterpreterService _interpreterService;
         private readonly CharmManager _manager;
         private readonly ILogger<TelegramController> _logger;
         private readonly UserService _userService;
 
         public TelegramController(
             ITelegramBotClient client,
-            CharmInterpreter interpreter,
+            CharmInterpreterService interpreterService,
             CharmManager manager,
             ILogger<TelegramController> logger,
             UserService userService)
         {
             _client = client;
-            _interpreter = interpreter;
+            _interpreterService = interpreterService;
             _manager = manager;
             _logger = logger;
             _userService = userService;
@@ -52,7 +52,7 @@ namespace Charm.Application.Controllers
             if (response is null)
             {
                 await _userService.Initialize(update.Message.From);
-                response = await _interpreter.TakeMessage(update.Message);
+                response = await _interpreterService.TakeMessage(update.Message);
             }
 
             _logger.LogDebug(response);

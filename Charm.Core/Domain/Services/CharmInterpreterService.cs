@@ -9,14 +9,14 @@ using Telegram.Bot.Types;
 
 namespace Charm.Core.Domain.Services
 {
-    public class CharmInterpreter
+    public class CharmInterpreterService
     {
-        private readonly ILogger<CharmInterpreter> _logger;
+        private readonly ILogger<CharmInterpreterService> _logger;
         private readonly CharmManager _manager;
         private readonly UserService _userService;
         private readonly List<SpeechCase> SpeechCases;
 
-        public CharmInterpreter(CharmManager manager, ILogger<CharmInterpreter> logger, UserService userService)
+        public CharmInterpreterService(CharmManager manager, ILogger<CharmInterpreterService> logger, UserService userService)
         {
             _manager = manager;
             _logger = logger;

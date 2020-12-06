@@ -17,18 +17,18 @@ namespace Charm.Application.Controllers
     [Route("debug-gist/")]
     public class DebugGistController : ControllerBase
     {
-        private readonly CharmInterpreter _interpreter;
+        private readonly CharmInterpreterService _interpreterService;
         private readonly CharmDbContext _context;
         private readonly CharmManager _charmManager;
         private readonly IMapper _mapper;
         private readonly long _debugUserId = 1;
 
         public DebugGistController(
-            CharmInterpreter interpreter,
+            CharmInterpreterService interpreterService,
             CharmDbContext context,
             CharmManager charmManager, IMapper mapper)
         {
-            _interpreter = interpreter;
+            _interpreterService = interpreterService;
             _context = context;
             _charmManager = charmManager;
             _mapper = mapper;

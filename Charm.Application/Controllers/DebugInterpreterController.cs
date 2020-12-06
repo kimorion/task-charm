@@ -13,17 +13,17 @@ namespace Charm.Application.Controllers
     [Route("debug/interpreter/")]
     public class DebugInterpreterController : ControllerBase
     {
-        private readonly CharmInterpreter _interpreter;
+        private readonly CharmInterpreterService _interpreterService;
         private readonly CharmDbContext _context;
         private readonly CharmManager _charmManager;
         private readonly IMapper _mapper;
 
         public DebugInterpreterController(
-            CharmInterpreter interpreter,
+            CharmInterpreterService interpreterService,
             CharmDbContext context,
             CharmManager charmManager, IMapper mapper)
         {
-            _interpreter = interpreter;
+            _interpreterService = interpreterService;
             _context = context;
             _charmManager = charmManager;
             _mapper = mapper;
