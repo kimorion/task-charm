@@ -27,7 +27,19 @@ namespace Charm.Core.Domain
 
             public bool IsValid
             {
-                get { return _innerStatus && parserCallQueue.All(call => call.Item2(call.Item1)); }
+                get
+                {
+                    var result = _innerStatus && parserCallQueue.All(call => call.Item2(call.Item1));
+                    parserCallQueue.Clear();
+                    return result;
+                }
+            }
+
+            public void Reset()
+            {
+                StringCaret = _initialStringCaret;
+                parserCallQueue.Clear();
+                SetValid();
             }
 
             public void SetInvalid() => _innerStatus = false;
@@ -36,10 +48,12 @@ namespace Charm.Core.Domain
 
             public Queue<Tuple<string, Func<string, bool>>>
                 parserCallQueue = new Queue<Tuple<string, Func<string, bool>>>();
-            public uint StringCaret;
+            public uint StringCaret { get; set; }
+            private readonly uint _initialStringCaret;
 
             public Level(uint stringCaret)
             {
+                _initialStringCaret = stringCaret;
                 StringCaret = stringCaret;
                 _innerStatus = true;
             }
@@ -101,7 +115,7 @@ namespace Charm.Core.Domain
             {
                 _state = _state switch
                 {
-                    State.Reset => Reset(),
+                    State.Reset => ResetInterpreter(),
                     State.ReadTemplate => ReadTemplate(),
                     State.ReadTemplateAndSave => ReadTemplateAndSave(),
                     State.ReadAndSaveParserName => ReadAndSaveParserName(),
@@ -149,7 +163,7 @@ namespace Charm.Core.Domain
             var currentTemplateWord = CurrentTemplateWord;
             _templateCaret++;
             if (currentTemplateWord == ")") return State.ReadTemplate;
-            
+
             _templateQueue.Enqueue(currentTemplateWord);
             return State.ReadTemplateAndSave;
         }
@@ -176,6 +190,12 @@ namespace Charm.Core.Domain
             {
                 _errorMessage = "parser not found";
                 return State.Error;
+            }
+
+            if (CurrentLevel.StringCaret == _stringWords.Length)
+            {
+                CurrentLevel.SetInvalid();
+                return State.ExitCurrentLevel;
             }
 
             var stringWord = CurrentStringWord;
@@ -211,19 +231,34 @@ namespace Charm.Core.Domain
                 return State.ExitCurrentLevel;
             }
 
-            CurrentLevel.SetValid();
+            CurrentLevel.Reset();
             return State.ReadTemplate;
         }
 
         private State CloseLevel()
         {
-            throw new NotImplementedException();
+            if (_levels.Count == 1)
+            {
+                return State.ReadTemplate;
+            }
+
+            var closingLevel = _levels.Pop();
+            if (closingLevel.IsValid)
+            {
+                CurrentLevel.StringCaret = closingLevel.StringCaret;
+            }
+
+            return State.ReadTemplate;
         }
 
         private State OpenLevel()
         {
-            // _levels.Push(new Level());
-            throw new NotImplementedException();
+            if (CurrentLevel.IsValid)
+            {
+                _levels.Push(new Level(CurrentLevel.StringCaret));
+            }
+
+            return State.ReadTemplate;
         }
 
         private State ReturnError(string? message = null)
@@ -248,7 +283,7 @@ namespace Charm.Core.Domain
             return State.ExitCurrentLevel;
         }
 
-        private State Reset()
+        private State ResetInterpreter()
         {
             var templateWords =
                 Regex.Split(_originalTemplate, @"([()\[\]>]|\|\|)|\s+", RegexOptions.Compiled)

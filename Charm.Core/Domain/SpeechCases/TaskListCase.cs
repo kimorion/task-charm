@@ -19,15 +19,29 @@ namespace Charm.Core.Domain.SpeechCases
 
         public override bool TryParse(MessageInfo message)
         {
-            // CharmInterpreter interpreter = new CharmInterpreter(
-            //     @"сегодня [ 
-            //                 [  в (5)>shortTimeParser часов || в (15:00)>fullTimeParser   ] 
-            //                 [ (вечером)>wordTimeParser ] 
-            //               ] ");
+            CharmInterpreter interpreter = new CharmInterpreter(
+                @"сегодня [ 
+                            [  в (5)>shortTimeParser часов || в (15:00)>fullTimeParser   ] 
+                            [ (вечером)>wordTimeParser ] 
+                          ] ");
 
-            CharmInterpreter interpreter = new CharmInterpreter();
-            interpreter.AddParser("testParser", str => true);
-            interpreter.SetTemplate("сегодня || завтра || (parameter)>testParser");
+            interpreter.AddParser("shortTimeParser", str =>
+            {
+                Console.WriteLine("shortTimeParser");
+                return true;
+            });
+            
+            interpreter.AddParser("fullTimeParser", str =>
+            {
+                Console.WriteLine("fullTimeParser");
+                return true;
+            });
+            
+            interpreter.AddParser("wordTimeParser", str =>
+            {
+                Console.WriteLine("wordTimeParser");
+                return true;
+            });
 
             result = interpreter.TryInterpret(message.OriginalString);
             return true;
