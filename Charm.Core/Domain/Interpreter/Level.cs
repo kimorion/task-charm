@@ -14,7 +14,7 @@ namespace Charm.Core.Domain.Interpreter
             {
                 get
                 {
-                    var result = _innerStatus && ParserCallQueue.All(call => call.Item2(call.Item1));
+                    var result = _innerStatus && ParserCallQueue.All(call => call.Item2(call.Item1)) && !IsSkipping;
                     _innerStatus = result;
                     ParserCallQueue.Clear();
                     return result;
@@ -37,11 +37,13 @@ namespace Charm.Core.Domain.Interpreter
             public int StringCaret { get; set; }
             private readonly int _initialStringCaret;
             public readonly bool IsOptional;
+            public readonly bool IsSkipping;
 
-            public Level(int stringCaret, bool isOptional)
+            public Level(int stringCaret, bool isOptional, bool isSkipping)
             {
                 _initialStringCaret = stringCaret;
                 IsOptional = isOptional;
+                IsSkipping = isSkipping;
                 StringCaret = stringCaret;
                 _innerStatus = true;
             }

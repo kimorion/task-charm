@@ -9,8 +9,6 @@
             ReadAndSaveToken,
             ReadAndSaveParserName,
             SaveParserCall,
-            ExitCurrentLevel,
-            SkipLevel,
             Stop,
             Error,
         }
