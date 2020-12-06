@@ -27,7 +27,7 @@ namespace Charm.Core.Domain.SpeechCases
 
         public override bool TryParse(MessageInfo message)
         {
-            _interpreter.SetTemplate
+            _interpreter.SetPattern
             (
                 @"задачи || таски || (список (задач || тасков)) тест"
             );

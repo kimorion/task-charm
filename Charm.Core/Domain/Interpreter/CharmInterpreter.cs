@@ -18,10 +18,10 @@ namespace Charm.Core.Domain.Interpreter
             _parsers.Add(name, parser);
         }
 
-        public void SetTemplate(string template)
+        public void SetPattern(string pattern)
         {
             //todo check brackets count
-            _originalTemplate = template ?? throw new ArgumentNullException(nameof(template));
+            _originalPattern = pattern ?? throw new ArgumentNullException(nameof(pattern));
         }
 
         public bool TryInterpret(string str)
@@ -36,15 +36,15 @@ namespace Charm.Core.Domain.Interpreter
         private readonly Dictionary<string, Func<string, bool>>
             _parsers = new Dictionary<string, Func<string, bool>>();
         private string _originalString = "";
-        private string _originalTemplate = "";
+        private string _originalPattern = "";
 
         private State _state = State.Reset;
         private readonly Stack<Level> _levels = new Stack<Level>();
         private string? _errorMessage;
-        private string[] _templateWords = Array.Empty<string>();
+        private string[] _patternWords = Array.Empty<string>();
         private string[] _stringWords = Array.Empty<string>();
-        private uint _templateCaret;
-        private readonly Queue<string> _templateQueue = new Queue<string>();
+        private uint _patternCaret;
+        private readonly Queue<string> _patternQueue = new Queue<string>();
 
         private bool Start()
         {
@@ -56,8 +56,8 @@ namespace Charm.Core.Domain.Interpreter
                 _state = _state switch
                 {
                     State.Reset => ResetInterpreter(),
-                    State.ReadTemplate => ReadTemplate(),
-                    State.ReadTemplateAndSave => ReadTemplateAndSave(),
+                    State.ReadPatternToken => ReadPatternToken(),
+                    State.ReadAndSavePatternToken => ReadAndSavePatternToken(),
                     State.ReadAndSaveParserName => ReadAndSaveParserName(),
                     State.ExitCurrentLevel => ExitCurrentLevel(),
                     State.SkipLevel => SkipCurrentLevel(),
@@ -70,15 +70,17 @@ namespace Charm.Core.Domain.Interpreter
             return CurrentLevel.IsValid;
         }
 
-        private State ReadTemplate()
+        private State ReadPatternToken()
         {
-            if (_templateCaret == _templateWords.Length)
+            if (_patternCaret == _patternWords.Length)
             {
                 return State.Stop;
             }
 
-            var nextWord = CurrentTemplateWord;
-            _templateCaret++;
+            var nextWord = CurrentPatternToken;
+            _patternCaret++;
+
+            _logger.LogDebug($"reading next pattern token: {nextWord}");
 
             var result = nextWord switch
             {
@@ -86,48 +88,48 @@ namespace Charm.Core.Domain.Interpreter
                 "]" => CloseLevel(),
                 "(" => OpenLevel(isOptional: false),
                 ")" => CloseLevel(),
-                "{" => State.ReadTemplateAndSave,
+                "{" => State.ReadAndSavePatternToken,
                 ">" => State.ReadAndSaveParserName,
                 "||" => TryAnotherGroup(),
-                _ => CheckWord(nextWord),
+                _ => CheckNextWordWithToken(nextWord),
             };
 
             return result;
         }
 
-        private State ReadTemplateAndSave()
+        private State ReadAndSavePatternToken()
         {
-            if (_templateCaret == _templateWords.Length)
+            if (_patternCaret == _patternWords.Length)
             {
                 _errorMessage = "non closed capture group!";
                 return State.Error;
             }
 
-            var currentTemplateWord = CurrentTemplateWord;
-            _templateCaret++;
-            if (currentTemplateWord == "}") return State.ReadTemplate;
+            var currentPatternToken = CurrentPatternToken;
+            _patternCaret++;
+            if (currentPatternToken == "}") return State.ReadPatternToken;
 
-            _templateQueue.Enqueue(currentTemplateWord);
-            return State.ReadTemplateAndSave;
+            _patternQueue.Enqueue(currentPatternToken);
+            return State.ReadAndSavePatternToken;
         }
 
         private State ReadAndSaveParserName()
         {
-            if (_templateCaret == _templateWords.Length)
+            if (_patternCaret == _patternWords.Length)
             {
                 _errorMessage = "parser name empty!";
                 return State.Error;
             }
 
-            _templateQueue.Enqueue(CurrentTemplateWord);
-            _templateCaret++;
+            _patternQueue.Enqueue(CurrentPatternToken);
+            _patternCaret++;
             return State.SaveParserCall;
         }
 
         private State SaveParserCall()
         {
-            var wordCountString = _templateQueue.Dequeue();
-            var parserName = _templateQueue.Dequeue();
+            var wordCountString = _patternQueue.Dequeue();
+            var parserName = _patternQueue.Dequeue();
 
             if (!_parsers.TryGetValue(parserName, out var parser))
             {
@@ -166,10 +168,10 @@ namespace Charm.Core.Domain.Interpreter
             }
 
             CurrentLevel.ParserCallQueue.Enqueue(Tuple.Create(parserString, parser));
-            return State.ReadTemplate;
+            return State.ReadPatternToken;
         }
 
-        private State CheckWord(string templateWord)
+        private State CheckNextWordWithToken(string token)
         {
             if (CurrentLevel.StringCaret == _stringWords.Length)
             {
@@ -178,14 +180,14 @@ namespace Charm.Core.Domain.Interpreter
             }
 
             var nextWord = CurrentStringWord;
-            if (nextWord != templateWord)
+            if (nextWord != token)
             {
                 CurrentLevel.SetInvalid();
                 return State.ExitCurrentLevel;
             }
 
             CurrentLevel.StringCaret++;
-            return State.ReadTemplate;
+            return State.ReadPatternToken;
         }
 
         private State TryAnotherGroup()
@@ -196,7 +198,7 @@ namespace Charm.Core.Domain.Interpreter
             }
 
             CurrentLevel.Reset();
-            return State.ReadTemplate;
+            return State.ReadPatternToken;
         }
 
         private State OpenLevel(bool isOptional)
@@ -204,7 +206,7 @@ namespace Charm.Core.Domain.Interpreter
             if (CurrentLevel.IsValid)
             {
                 _levels.Push(new Level(CurrentLevel.StringCaret, isOptional: isOptional));
-                return State.ReadTemplate;
+                return State.ReadPatternToken;
             }
             else
             {
@@ -214,26 +216,26 @@ namespace Charm.Core.Domain.Interpreter
 
         private State SkipCurrentLevel()
         {
-            if (_templateCaret == _templateWords.Length)
+            if (_patternCaret == _patternWords.Length)
             {
                 _errorMessage = "non closed level!";
             }
 
-            if (CurrentTemplateWord != (CurrentLevel.IsOptional ? "]" : ")"))
+            if (CurrentPatternToken != (CurrentLevel.IsOptional ? "]" : ")"))
             {
-                _templateCaret++;
+                _patternCaret++;
                 return State.SkipLevel;
             }
 
-            _templateCaret++;
-            return State.ReadTemplate;
+            _patternCaret++;
+            return State.ReadPatternToken;
         }
 
         private State CloseLevel()
         {
             if (_levels.Count == 1)
             {
-                return State.ReadTemplate;
+                return State.ReadPatternToken;
             }
 
             var closingLevel = _levels.Pop();
@@ -246,7 +248,7 @@ namespace Charm.Core.Domain.Interpreter
                 CurrentLevel.SetInnerStatus(CurrentLevel.IsValid && closingLevel.IsValid);
             }
 
-            return State.ReadTemplate;
+            return State.ReadPatternToken;
         }
 
         private State ReturnError(string? message = null)
@@ -257,29 +259,29 @@ namespace Charm.Core.Domain.Interpreter
 
         private State ExitCurrentLevel()
         {
-            if (_templateCaret == _templateWords.Length)
+            if (_patternCaret == _patternWords.Length)
             {
                 return State.Stop;
             }
 
-            var templateWord = CurrentTemplateWord;
-            if (templateWord == (CurrentLevel.IsOptional ? "]" : "}") || templateWord == "||")
+            var patternToken = CurrentPatternToken;
+            if (patternToken == (CurrentLevel.IsOptional ? "]" : "}") || patternToken == "||")
             {
-                return State.ReadTemplate;
+                return State.ReadPatternToken;
             }
 
-            _templateCaret++;
+            _patternCaret++;
             return State.ExitCurrentLevel;
         }
 
         private State ResetInterpreter()
         {
-            var templateWords =
-                Regex.Split(_originalTemplate, @"([()\[\]>]|\|\|)|\s+", RegexOptions.Compiled)
+            var patternTokens =
+                Regex.Split(_originalPattern, @"([()\[\]>]|\|\|)|\s+", RegexOptions.Compiled)
                     .Where(w => !string.IsNullOrWhiteSpace(w)).ToArray();
-            if (templateWords.Length == 0)
+            if (patternTokens.Length == 0)
             {
-                _errorMessage = "template string was empty!";
+                _errorMessage = "pattern string was empty!";
                 return State.Error;
             }
 
@@ -291,15 +293,15 @@ namespace Charm.Core.Domain.Interpreter
             }
 
             LogArray(stringWords);
-            LogArray(templateWords);
+            LogArray(patternTokens);
 
-            _templateWords = templateWords;
+            _patternWords = patternTokens;
             _stringWords = stringWords;
             _levels.Clear();
             _levels.Push(new Level(0, isOptional: false));
-            _templateCaret = 0;
+            _patternCaret = 0;
 
-            return State.ReadTemplate;
+            return State.ReadPatternToken;
         }
 
         private Level CurrentLevel
@@ -312,9 +314,9 @@ namespace Charm.Core.Domain.Interpreter
             get => _stringWords[CurrentLevel.StringCaret];
         }
 
-        private string CurrentTemplateWord
+        private string CurrentPatternToken
         {
-            get => _templateWords[_templateCaret];
+            get => _patternWords[_patternCaret];
         }
 
         private void LogArray(string[] array)
