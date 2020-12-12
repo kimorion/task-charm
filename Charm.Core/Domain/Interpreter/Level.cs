@@ -8,45 +8,32 @@ namespace Charm.Core.Domain.Interpreter
     {
         private class Level
         {
-            private bool _innerStatus;
+            public bool ExpressionResult { get; set; }
+            public int TokenCaret { get; set; }
+            public int StringCaret { get; set; }
+            public void SetInvalid() => ExpressionResult = false;
+            public void SetValid() => ExpressionResult = true;
+            public readonly bool IsOptional;
+            public ReaderState ReaderState = ReaderState.Reset;
+            public ExpressionState ExpressionState = ExpressionState.And;
 
-            public bool IsValid
+            public Level(int stringCaret, int tokenCaret, bool expressionResult)
             {
-                get
-                {
-                    var result = _innerStatus && ParserCallQueue.All(call => call.Item2(call.Item1)) && !IsSkipping;
-                    _innerStatus = result;
-                    ParserCallQueue.Clear();
-                    return result;
-                }
+                _initialStringCaret = stringCaret;
+                _initialTokenCaret = tokenCaret;
+                StringCaret = stringCaret;
+                TokenCaret = tokenCaret;
+                ExpressionResult = expressionResult;
             }
 
             public void Reset()
             {
                 StringCaret = _initialStringCaret;
-                ParserCallQueue.Clear();
                 SetValid();
             }
 
-            public void SetInvalid() => _innerStatus = false;
-            public void SetValid() => _innerStatus = true;
-            public void SetInnerStatus(bool status) => _innerStatus = status;
-
-            public readonly Queue<Tuple<string, Func<string, bool>>>
-                ParserCallQueue = new Queue<Tuple<string, Func<string, bool>>>();
-            public int StringCaret { get; set; }
             private readonly int _initialStringCaret;
-            public readonly bool IsOptional;
-            public readonly bool IsSkipping;
-
-            public Level(int stringCaret, bool isOptional, bool isSkipping)
-            {
-                _initialStringCaret = stringCaret;
-                IsOptional = isOptional;
-                IsSkipping = isSkipping;
-                StringCaret = stringCaret;
-                _innerStatus = true;
-            }
+            private readonly int _initialTokenCaret;
         }
     }
 }

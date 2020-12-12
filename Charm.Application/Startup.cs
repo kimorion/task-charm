@@ -15,6 +15,11 @@ namespace Charm.Application
 {
     public class Startup
     {
+        private IConfiguration Configuration { get; }
+        private IConfigurationSection TelegramSettingsSection { get; }
+        private IConfigurationSection DbSettingsSection { get; }
+        private string? _setWebhookUrl;
+
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -29,22 +34,16 @@ namespace Charm.Application
                 .Build();
             DbSettingsSection = dbSettings.GetSection("ConnectionStrings");
         }
-
-        private IConfiguration Configuration { get; }
-        private IConfigurationSection TelegramSettingsSection { get; }
-        private IConfigurationSection DbSettingsSection { get; }
-        private string? _setWebhookUrl;
-
-
+        
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDbContext<CharmDbContext>(
-                options => options.UseNpgsql(DbSettingsSection["Main"]));
             services.AddScoped<UserService>();
             services.AddTransient<CharmInterpreterService>();
             services.AddTransient<CharmManager>();
             services.AddTransient<CharmNotifierService>();
             services.AddTransient<CharmInterpreter>();
+            services.AddDbContext<CharmDbContext>(
+                options => options.UseNpgsql(DbSettingsSection["Main"]));
 
             services.AddTransient<ITelegramBotClient, TelegramBotClient>(provider =>
             {
@@ -85,7 +84,7 @@ namespace Charm.Application
             app.UseRouting();
 
             app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
-            
+
             UpdateDatabase(app);
         }
 

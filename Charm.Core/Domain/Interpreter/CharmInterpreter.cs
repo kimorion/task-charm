@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
@@ -13,7 +14,7 @@ namespace Charm.Core.Domain.Interpreter
             _logger = logger;
         }
 
-        public void AddParser(string name, Func<string, bool> parser)
+        public void AddParser(string name, Func<List<string>, bool> parser)
         {
             _parsers.Add(name, parser);
         }
@@ -28,301 +29,336 @@ namespace Charm.Core.Domain.Interpreter
         {
             _originalString = str ?? throw new ArgumentNullException(nameof(str));
 
-            _state = State.Reset;
+            ResetInterpreter();
             return Start();
         }
 
         private readonly ILogger<CharmInterpreter> _logger;
-        private readonly Dictionary<string, Func<string, bool>>
-            _parsers = new Dictionary<string, Func<string, bool>>();
+        private readonly Stack<Level> _levelStack = new Stack<Level>();
+        private readonly Stack<string> _tokenStack = new Stack<string>();
+        private readonly Dictionary<string, Func<List<string>, bool>>
+            _parsers = new Dictionary<string, Func<List<string>, bool>>();
         private string _originalString = "";
         private string _originalPattern = "";
-
-        private State _state = State.Reset;
-        private readonly Stack<Level> _levels = new Stack<Level>();
         private string? _errorMessage;
-        private string[] _patternWords = Array.Empty<string>();
-        private string[] _stringWords = Array.Empty<string>();
-        private uint _patternCaret;
-        private readonly Queue<string> _patternQueue = new Queue<string>();
+        private string[] _tokens = Array.Empty<string>();
+        private string[] _words = Array.Empty<string>();
+
+        private Level CurrentLevel => _levelStack.Peek();
+
+        private int TokenCaret
+        {
+            get => CurrentLevel.TokenCaret;
+            set => CurrentLevel.TokenCaret = value;
+        }
+
+        private string CurrentWord => _words[CurrentLevel.StringCaret];
+        private string CurrentToken => _tokens[TokenCaret];
+
+        private ReaderState CurrentReaderState
+        {
+            get => CurrentLevel.ReaderState;
+            set => CurrentLevel.ReaderState = value;
+        }
+
+        private ExpressionState CurrentExpressionState
+        {
+            get => CurrentLevel.ExpressionState;
+            set => CurrentLevel.ExpressionState = value;
+        }
+
+        private bool CurrentExpressionResult
+        {
+            get => CurrentLevel.ExpressionResult;
+            set => CurrentLevel.ExpressionResult = value;
+        }
+
+        private int CurrentWordCaret
+        {
+            get => CurrentLevel.StringCaret;
+            set => CurrentLevel.StringCaret = value;
+        }
+
+        private int CurrentTokenCaret
+        {
+            get => CurrentLevel.TokenCaret;
+            set => CurrentLevel.TokenCaret = value;
+        }
+
+        private bool IsSkipping()
+        {
+            return CurrentExpressionState == ExpressionState.And && CurrentExpressionResult == false ||
+                   CurrentExpressionState == ExpressionState.Or && CurrentExpressionResult == true;
+        }
+
+        private void AppendExpressionResult(bool result)
+        {
+            if (CurrentExpressionState == ExpressionState.And)
+            {
+                CurrentExpressionResult = CurrentExpressionResult && result;
+            }
+            else if (CurrentExpressionState == ExpressionState.Or)
+            {
+                CurrentExpressionResult = CurrentExpressionResult || result;
+            }
+        }
+
+        private void SetInvalid() => CurrentLevel.SetInvalid();
+        private void SetValid() => CurrentLevel.SetValid();
 
         private bool Start()
         {
-            if (_state != State.Reset)
+            if (CurrentReaderState != ReaderState.Reset)
                 throw new InvalidOperationException("Interpreter not reset");
 
-            while (_state != State.Stop)
+            while (CurrentReaderState != ReaderState.Stop)
             {
-                _state = _state switch
+                CurrentReaderState = CurrentReaderState switch
                 {
-                    State.Reset => ResetInterpreter(),
-                    State.ReadToken => ReadPatternToken(),
-                    State.ReadAndSaveToken => ReadAndSavePatternToken(),
-                    State.ReadAndSaveParserName => ReadAndSaveParserName(),
-                    State.SaveParserCall => SaveParserCall(),
-                    State.Error => ReturnError(),
+                    ReaderState.Reset => ReaderState.ReadToken,
+                    ReaderState.ReadToken => ReadPatternToken(),
+                    ReaderState.PushToken => ReadAndPushToken(),
+                    ReaderState.CallParser => CallParser(),
+                    ReaderState.Stop => ReaderState.Stop,
+                    ReaderState.Error => ReturnError(),
                     _ => ReturnError("Impossible interpreter state")
                 };
             }
 
-            return CurrentLevel.IsValid;
+            return CurrentExpressionResult;
         }
 
-        private State ReadPatternToken()
+        private ReaderState ReadPatternToken()
         {
-            if (_patternCaret == _patternWords.Length)
+            if (TokenCaret >= _tokens.Length)
             {
-                return State.Stop;
+                return ReaderState.Stop;
             }
 
-            var nextWord = CurrentPatternToken;
-            _patternCaret++;
+            var nextWord = CurrentToken;
 
             _logger.LogDebug($"reading next pattern token: {nextWord}");
 
-            State? result = nextWord switch
+            ReaderState? result = nextWord switch
             {
-                "[" => OpenLevel(isOptional: true),
+                "[" => OpenLevel(),
                 "]" => CloseLevel(),
-                "(" => OpenLevel(isOptional: false),
+                "(" => OpenLevel(),
                 ")" => CloseLevel(),
                 _ => null,
             };
 
-            if (result is not null) return result.Value;
-
-            if (CurrentLevel.IsSkipping)
+            result ??= nextWord switch
             {
-                _logger.LogDebug($"skipping token: {nextWord}");
-                return State.ReadToken;
-            }
-
-            return nextWord switch
-            {
-                "{" => State.ReadAndSaveToken,
-                ">" => State.ReadAndSaveParserName,
-                "||" => TryNextGroup(),
+                "{" => ReaderState.PushToken,
+                "}" => ReaderState.ReadToken,
+                ">" => ReaderState.CallParser,
+                "|" => ReaderState.ReadToken,
                 "#" => MustBeAtTheEnd(),
-                _ => CheckNextWordWithToken(nextWord),
+                _ => CheckCurrentWordWithToken(),
             };
+
+            CurrentExpressionState = CurrentToken == "|" ? ExpressionState.Or : ExpressionState.And;
+            TokenCaret++;
+            return result.Value;
         }
 
-        private State MustBeAtTheEnd()
+        private ReaderState MustBeAtTheEnd()
         {
-            if (CurrentLevel.StringCaret != _stringWords.Length)
+            if (CurrentLevel.StringCaret != _words.Length)
             {
                 CurrentLevel.SetInvalid();
                 _logger.LogDebug("# => check failed, not at the end of the string");
-                return State.ReadToken;
+                return ReaderState.ReadToken;
             }
 
             _logger.LogDebug("# => check success");
-            return State.ReadToken;
+            return ReaderState.ReadToken;
         }
 
-        private State ReadAndSavePatternToken()
+        private ReaderState ReadAndPushToken()
         {
-            if (_patternCaret == _patternWords.Length)
+            if (TokenCaret == _tokens.Length)
             {
                 _errorMessage = "non closed capture group!";
-                return State.Error;
+                return ReaderState.Error;
             }
 
-            var currentPatternToken = CurrentPatternToken;
-            _patternCaret++;
-            if (currentPatternToken == "}") return State.ReadToken;
+            if (CurrentToken == "}")
+            {
+                CurrentTokenCaret++;
+                return ReaderState.ReadToken;
+            }
 
-            _patternQueue.Enqueue(currentPatternToken);
-            return State.ReadAndSaveToken;
+            _tokenStack.Push(CurrentToken);
+            _logger.LogDebug($"pushed token: {CurrentToken}");
+            CurrentTokenCaret++;
+            return ReaderState.PushToken;
         }
 
-        private State ReadAndSaveParserName()
+        private ReaderState CallParser()
         {
-            if (_patternCaret == _patternWords.Length)
+            if (IsSkipping())
             {
-                _errorMessage = "parser name empty!";
-                return State.Error;
+                _logger.LogDebug(
+                    $"exp_state:{CurrentExpressionState}:{CurrentExpressionResult}  skipping parser");
+                return ReaderState.ReadToken;
             }
 
-            _patternQueue.Enqueue(CurrentPatternToken);
-            _patternCaret++;
-            return State.SaveParserCall;
-        }
-
-        private State SaveParserCall()
-        {
-            var wordCountString = _patternQueue.Dequeue();
-            var parserName = _patternQueue.Dequeue();
-
-            if (!_parsers.TryGetValue(parserName, out var parser))
+            var wordCountString = _tokenStack.Pop();
+            if (!_parsers.TryGetValue(CurrentToken, out var parser))
             {
-                _errorMessage = "parser not found";
-                return State.Error;
+                _errorMessage = $"parser \"{CurrentToken}\" not found";
+                return ReaderState.Error;
             }
 
-            if (CurrentLevel.StringCaret == _stringWords.Length)
-            {
-                CurrentLevel.SetInvalid();
-                return State.ReadToken;
-            }
-
-            string? parserString;
+            IEnumerable<string> parserWords;
             if (wordCountString == "*")
             {
-                parserString = string.Join(" ", _stringWords.Skip(CurrentLevel.StringCaret));
-                CurrentLevel.StringCaret = _stringWords.Length;
+                if (CurrentWordCaret == _words.Length - 1)
+                {
+                    CurrentLevel.SetInvalid();
+                    CurrentTokenCaret++;
+                    return ReaderState.ReadToken;
+                }
+
+                parserWords = _words.Skip(CurrentWordCaret + 1);
+                CurrentWordCaret = _words.Length;
             }
             else
             {
-                if (!int.TryParse(wordCountString, out var wordCount))
+                if (!int.TryParse(wordCountString, out var wordCount) || wordCount < 0)
                 {
-                    _errorMessage = "invalid parser parameter";
-                    return State.Error;
+                    _errorMessage = $"invalid parser parameter {wordCountString}";
+                    return ReaderState.Error;
                 }
 
-                if (_stringWords.Length - CurrentLevel.StringCaret < wordCount)
+                if (_words.Length - CurrentWordCaret < wordCount)
                 {
+                    _logger.LogDebug($"skipping parser {CurrentToken}: not enough words");
                     CurrentLevel.SetInvalid();
-                    return State.ReadToken;
+                    CurrentTokenCaret++;
+                    return ReaderState.ReadToken;
                 }
 
-                parserString = string.Join(" ", _stringWords.Skip(CurrentLevel.StringCaret).Take(wordCount));
-                CurrentLevel.StringCaret += wordCount;
+                parserWords = _words.Skip(CurrentWordCaret).Take(wordCount);
+                CurrentWordCaret += wordCount;
             }
 
-            CurrentLevel.ParserCallQueue.Enqueue(Tuple.Create(parserString, parser));
-            return State.ReadToken;
+            var result = parser(parserWords.ToList());
+            _logger.LogDebug($"called parser {CurrentToken}, result: {result}");
+            AppendExpressionResult(result);
+            CurrentTokenCaret++;
+            return ReaderState.ReadToken;
         }
 
-        private State CheckNextWordWithToken(string token)
+        private ReaderState CheckCurrentWordWithToken()
         {
-            if (CurrentLevel.StringCaret == _stringWords.Length)
+            if (IsSkipping())
             {
-                CurrentLevel.SetInvalid();
-                _logger.LogDebug("Check failed: string too short");
-                return State.ReadToken;
+                _logger.LogDebug(
+                    $"exp_state:{CurrentExpressionState}:{CurrentExpressionResult}  skipping token: {CurrentToken}");
+                return ReaderState.ReadToken;
             }
 
-            var nextWord = CurrentStringWord;
-            if (nextWord != token)
+            if (CurrentWordCaret == _words.Length)
             {
-                _logger.LogDebug($"Check failed: {nextWord} != {token}");
-                CurrentLevel.SetInvalid();
-                return State.ReadToken;
+                _logger.LogDebug($"Check failed: no more word left");
+                AppendExpressionResult(false);
+                return ReaderState.ReadToken;
             }
 
-            CurrentLevel.StringCaret++;
-            _logger.LogDebug($"Check succeeded: {nextWord} = {token}");
-            return State.ReadToken;
+            var checkResult = CurrentWord == CurrentToken;
+            if (!checkResult)
+            {
+                _logger.LogDebug($"Check failed: {CurrentWord} != {CurrentToken}");
+                AppendExpressionResult(checkResult);
+            }
+            else
+            {
+                _logger.LogDebug($"Check succeeded: {CurrentWord} = {CurrentToken}");
+                AppendExpressionResult(checkResult);
+                CurrentWordCaret++;
+            }
+
+            return ReaderState.ReadToken;
         }
 
-        private State TryNextGroup()
+        private ReaderState OpenLevel()
         {
-            throw new NotImplementedException("Нужно реализовать как-то пропуск ненужных проверок");
-            if (CurrentLevel.IsValid)
-            {
-                _logger.LogDebug(" || > skipping next group...");
-                return State.ReadToken;
-            }
+            _logger.LogDebug($"Opening new {CurrentToken} level with expr. result = {CurrentExpressionResult}");
+            _levelStack.Push(new Level(
+                tokenCaret: TokenCaret,
+                expressionResult: CurrentExpressionState == ExpressionState.And ? CurrentExpressionResult : true,
+                stringCaret: CurrentWordCaret));
 
-            CurrentLevel.Reset();
-            _logger.LogDebug(" || > trying next group...");
-            return State.ReadToken;
+            return ReaderState.ReadToken;
         }
 
-        private State OpenLevel(bool isOptional)
+        private ReaderState CloseLevel()
         {
-            var levelDescription = CurrentLevel.IsSkipping ? "skipping" :
-                isOptional ? "optional" : "mandatory";
-
-            _levels.Push(new Level(
-                CurrentLevel.StringCaret,
-                isOptional: isOptional,
-                isSkipping: CurrentLevel.IsSkipping || !CurrentLevel.IsValid));
-
-            _logger.LogDebug($"Opening new {levelDescription} level: {_levels.Count}");
-
-            return State.ReadToken;
-        }
-
-        private State CloseLevel()
-        {
-            if (_levels.Count == 1)
+            if (_levelStack.Count == 1)
             {
-                return State.ReadToken;
+                _errorMessage = "attempt to close initial level";
+                return ReaderState.Error;
             }
 
-            var closingLevel = _levels.Pop();
+            var closingLevel = _levelStack.Pop();
+            CurrentTokenCaret = closingLevel.TokenCaret;
 
-            if (!closingLevel.IsSkipping)
+            var isSkipping = IsSkipping();
+            if (!isSkipping)
             {
-                if (closingLevel.IsValid)
+                if (closingLevel.ExpressionResult)
                 {
-                    CurrentLevel.StringCaret = closingLevel.StringCaret;
+                    CurrentWordCaret = closingLevel.StringCaret;
                 }
-                else if (!closingLevel.IsOptional)
+
+                if (CurrentToken != "]")
                 {
-                    CurrentLevel.SetInvalid();
+                    AppendExpressionResult(closingLevel.ExpressionResult);
                 }
             }
 
-            var closingLevelDescription = closingLevel.IsOptional ? "optional" : "mandatory";
-            var closingLevelValidity = closingLevel.IsSkipping ? "skipped" : closingLevel.IsValid ? "valid" : "invalid";
-            _logger.LogDebug(
-                $"closing {closingLevelDescription} {closingLevelValidity} level, current level: {_levels.Count}");
-
-            return State.ReadToken;
+            var action = isSkipping ? "Skipping" : "Closing";
+            _logger.LogDebug($"{action} {CurrentToken} level with expr. result = {closingLevel.ExpressionResult}");
+            _logger.LogDebug($"Outer expr.result = {CurrentExpressionResult}");
+            return ReaderState.ReadToken;
         }
 
-        private State ReturnError(string? message = null)
+        private ReaderState ReturnError(string? message = null)
         {
             _logger.LogError(message ?? _errorMessage ?? "Unknown interpreter error");
-            return State.Stop;
+            return ReaderState.Stop;
         }
 
-        private State ResetInterpreter()
+        private ReaderState ResetInterpreter()
         {
             var patternTokens =
-                Regex.Split(_originalPattern, @"([()\[\]{}#>]|\|\|)|\s+", RegexOptions.Compiled)
+                Regex.Split(_originalPattern, @"([()\[\]{}#>]|\|)|\s+", RegexOptions.Compiled)
                     .Where(w => !string.IsNullOrWhiteSpace(w)).ToArray();
             if (patternTokens.Length == 0)
             {
                 _errorMessage = "pattern string was empty!";
-                return State.Error;
+                return ReaderState.Error;
             }
 
             var stringWords = _originalString.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (stringWords.Length == 0)
             {
                 _errorMessage = "original string was empty!";
-                return State.Error;
+                return ReaderState.Error;
             }
 
             _logger.LogDebug($"Got tokens: {string.Join(", ", patternTokens)}");
             _logger.LogDebug($"Got words: {string.Join(", ", stringWords)}");
 
-            _patternWords = patternTokens;
-            _stringWords = stringWords;
-            _levels.Clear();
-            _levels.Push(new Level(0, isOptional: false, isSkipping: false));
-            _patternCaret = 0;
+            _tokens = patternTokens;
+            _words = stringWords;
+            _levelStack.Clear();
+            _levelStack.Push(new Level(stringCaret: 0, tokenCaret: 0, expressionResult: true));
 
-            return State.ReadToken;
-        }
-
-        private Level CurrentLevel
-        {
-            get => _levels.Peek();
-        }
-
-        private string CurrentStringWord
-        {
-            get => _stringWords[CurrentLevel.StringCaret];
-        }
-
-        private string CurrentPatternToken
-        {
-            get => _patternWords[_patternCaret];
+            return ReaderState.ReadToken;
         }
     }
 }

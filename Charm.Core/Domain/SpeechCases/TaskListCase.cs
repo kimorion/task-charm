@@ -29,7 +29,16 @@ namespace Charm.Core.Domain.SpeechCases
         {
             _interpreter.SetPattern
             (
-                @" [ {1}>listTypeParser ] (задачи || дела || (список [{1}>listTypeParser] (задач || дел)) [на {1}>dateParser]) #"
+                // @"раз два три [четыре] пять"
+                @" [ {1}>listTypeParser ] (задачи | дела | (список [{1}>listTypeParser] (задач | дел)) [на {1}>dateParser]) #"
+                // @" [ {1}>listTypeParser ] задачи | дела | список [{1}>listTypeParser] (задач | дел) [на {1}>dateParser] #"
+                // @"| & !"
+                // @"[раз два три | четыре] (раз | два | три четыре) | &"
+                // @"[раз два три | четыре] & (раз | два | три четыре) | &"
+                // @"& [& раз | два | три] | (раз два три)"
+                // @""
+                // @"[раз два три | четыре пять] (раз два три)"
+                // @""
             );
             _interpreter.AddParser("listTypeParser", ListTypeParser);
             _interpreter.AddParser("dateParser", DateParser);
@@ -38,14 +47,26 @@ namespace Charm.Core.Domain.SpeechCases
             return true;
         }
 
-        private bool DateParser(string str)
+        private bool DateParser(List<string> words)
         {
-            _date = CharmParser.ParseDay(str);
+            if (words.Count != 1)
+            {
+                return false;
+            }
+
+            var s = words[0];
+            _date = CharmParser.ParseDay(s);
             return _date != null;
         }
 
-        private bool ListTypeParser(string s)
+        private bool ListTypeParser(List<string> words)
         {
+            if (words.Count != 1)
+            {
+                return false;
+            }
+
+            var s = words[0];
             if (s == "все" || s == "всех")
             {
                 _listCreationType = ListCreationType.All;
@@ -57,7 +78,7 @@ namespace Charm.Core.Domain.SpeechCases
 
         public override async Task<string> ApplyAndRespond(long userId, CharmManager manager)
         {
-            // return _result ? "Matched!" : "Couldn't match!";
+            return _result ? $"{_listCreationType} {_date}" : "Couldn't match!";
 
             var gists = await manager.Context.Gists
                 .Where(g => _listCreationType == ListCreationType.All || g.IsDone).Where(g => g.UserId == userId)
