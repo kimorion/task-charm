@@ -29,7 +29,7 @@ namespace Charm.Core.Domain.Services
             SpeechCases = new List<SpeechCase>
             {
                 new TaskListCase(_interpreter),
-                new TaskCreationCase(),
+                new TaskCreationCase(_interpreter),
             };
         }
 

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Charm.Core.Domain.Dto;
 using Charm.Core.Domain.Entities;
 using Charm.Core.Domain.Interpreter;
 using Charm.Core.Domain.Services;
@@ -18,7 +19,6 @@ namespace Charm.Core.Domain.SpeechCases
 
         private ListCreationType _listCreationType = ListCreationType.Undone;
         private DateTimeOffset? _date;
-        private bool _result = false;
 
         public TaskListCase(CharmInterpreter interpreter)
         {
@@ -29,22 +29,12 @@ namespace Charm.Core.Domain.SpeechCases
         {
             _interpreter.SetPattern
             (
-                // @"раз два три [четыре] пять"
                 @" [ {1}>listTypeParser ] (задачи | дела | (список [{1}>listTypeParser] (задач | дел)) [на {1}>dateParser]) #"
-                // @" [ {1}>listTypeParser ] задачи | дела | список [{1}>listTypeParser] (задач | дел) [на {1}>dateParser] #"
-                // @"| & !"
-                // @"[раз два три | четыре] (раз | два | три четыре) | &"
-                // @"[раз два три | четыре] & (раз | два | три четыре) | &"
-                // @"& [& раз | два | три] | (раз два три)"
-                // @""
-                // @"[раз два три | четыре пять] (раз два три)"
-                // @""
             );
             _interpreter.AddParser("listTypeParser", ListTypeParser);
             _interpreter.AddParser("dateParser", DateParser);
 
-            _result = _interpreter.TryInterpret(message.OriginalString);
-            return true;
+            return _interpreter.TryInterpret(message.OriginalString);
         }
 
         private bool DateParser(List<string> words)
@@ -78,15 +68,21 @@ namespace Charm.Core.Domain.SpeechCases
 
         public override async Task<string> ApplyAndRespond(long userId, CharmManager manager)
         {
-            return _result ? $"{_listCreationType} {_date}" : "Couldn't match!";
+            var criteria = new GistSearchCriteria();
+            criteria.Date = _date;
+            if (_listCreationType == ListCreationType.Undone)
+            {
+                criteria.IsDone = false;
+            }
 
-            var gists = await manager.Context.Gists
-                .Where(g => _listCreationType == ListCreationType.All || g.IsDone).Where(g => g.UserId == userId)
-                .Include(g => g.Reminder)
-                .ToListAsync();
+            var gists = await manager.SearchGists(userId, criteria);
 
             StringBuilder builder = new StringBuilder();
-            builder.AppendLine("Все созданные задачи:");
+            builder.Append(_listCreationType == ListCreationType.All
+                ? "Список всех задач"
+                : "Список несделанных задач");
+            builder.Append(_date.HasValue ? " на " + _date.Value.ToString("yyyy-M-d") : " за все время");
+            builder.Append(":");
             builder.AppendLine();
             var i = 1;
             foreach (var gist in gists)

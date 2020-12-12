@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Charm.Core.Domain.Dto;
 using Charm.Core.Infrastructure;
@@ -19,6 +20,23 @@ namespace Charm.Core.Domain.Services
             Context = context;
             _logger = logger;
         }
+
+        public async Task<List<Gist>> SearchGists(long userId, GistSearchCriteria criteria)
+        {
+            IQueryable<Gist> query = Context.Gists;
+            query = query.Where(g => g.UserId == userId);
+            if (criteria.IsDone.HasValue)
+            {
+                query = query.Where(g => g.IsDone == criteria.IsDone);
+            }
+            if (criteria.Date.HasValue)
+            {
+                query = query.Where(g => g.Reminder!.Deadline == criteria.Date.Value.Date);
+            }
+
+            return await query.ToListAsync();
+        }
+
 
         public async Task<List<Gist>> GetGists(long userId)
         {
@@ -54,6 +72,7 @@ namespace Charm.Core.Domain.Services
 
             await Context.SaveChangesAsync();
         }
+
         public async Task CreateReminder(ReminderRequest request)
         {
             throw new NotImplementedException();

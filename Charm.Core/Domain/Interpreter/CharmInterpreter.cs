@@ -21,7 +21,6 @@ namespace Charm.Core.Domain.Interpreter
 
         public void SetPattern(string pattern)
         {
-            //todo check brackets count
             _originalPattern = pattern ?? throw new ArgumentNullException(nameof(pattern));
         }
 
@@ -165,7 +164,7 @@ namespace Charm.Core.Domain.Interpreter
 
         private ReaderState MustBeAtTheEnd()
         {
-            if (CurrentLevel.StringCaret != _words.Length)
+            if (_words.Length - 1 > CurrentLevel.StringCaret)
             {
                 CurrentLevel.SetInvalid();
                 _logger.LogDebug("# => check failed, not at the end of the string");
@@ -215,14 +214,14 @@ namespace Charm.Core.Domain.Interpreter
             IEnumerable<string> parserWords;
             if (wordCountString == "*")
             {
-                if (CurrentWordCaret == _words.Length - 1)
+                if (CurrentWordCaret == _words.Length)
                 {
                     CurrentLevel.SetInvalid();
                     CurrentTokenCaret++;
                     return ReaderState.ReadToken;
                 }
 
-                parserWords = _words.Skip(CurrentWordCaret + 1);
+                parserWords = _words.Skip(CurrentWordCaret);
                 CurrentWordCaret = _words.Length;
             }
             else
