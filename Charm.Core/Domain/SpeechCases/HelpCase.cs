@@ -30,33 +30,33 @@ namespace Charm.Core.Domain.SpeechCases
             var helpBuilder = new StringBuilder();
             helpBuilder.AppendLine("<b>Доступные команды:</b>");
             
-            helpBuilder.AppendLine("Создание задачи:");
+            helpBuilder.AppendLine("<b>Создание задачи:</b>");
             helpBuilder.Append("<i>");
             helpBuilder.AppendLine("в понедельник в 17 часов занятие английского");
             helpBuilder.AppendLine("через час встреча с начальником");
             helpBuilder.AppendLine("заменить трубу в ванной");
             helpBuilder.AppendLine("</i>");
             
-            helpBuilder.AppendLine("Составление списка задач:");
+            helpBuilder.AppendLine("<b>Составление списка задач:</b>");
             helpBuilder.Append("<i>");
             helpBuilder.AppendLine("все задачи на сегодня");
             helpBuilder.AppendLine("список дел на завтра");
             helpBuilder.AppendLine("задачи");
             helpBuilder.AppendLine("</i>");
             
-            helpBuilder.AppendLine("Установка статуса выполнения: (передайте номер задачи из последнего списка)");
+            helpBuilder.AppendLine("<b>Установка статуса выполнения: (передайте номер задачи из последнего списка)</b>");
             helpBuilder.Append("<i>");
             helpBuilder.AppendLine("готова 5");
             helpBuilder.AppendLine("не готовы 1 2 3");
             helpBuilder.AppendLine("</i>");
             
-            helpBuilder.AppendLine("Удаление задачи: (передайте номер задачи из последнего списка)");
+            helpBuilder.AppendLine("<b>Удаление задачи: (передайте номер задачи из последнего списка)</b>");
             helpBuilder.Append("<i>");
             helpBuilder.AppendLine("удали 5");
             helpBuilder.AppendLine("убрать 1 2 3");
             helpBuilder.AppendLine("</i>");
             
-            helpBuilder.AppendLine("Добавление напоминания: (передайте номер задачи из последнего списка)");
+            helpBuilder.AppendLine("<b>Добавление напоминания: (передайте номер задачи из последнего списка)</b>");
             helpBuilder.Append("<i>");
             helpBuilder.AppendLine("создай напоминание о 5 на завтра в 20:00");
             helpBuilder.AppendLine("напомни про 5 завтра");

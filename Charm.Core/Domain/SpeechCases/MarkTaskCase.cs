@@ -25,7 +25,7 @@ namespace Charm.Core.Domain.SpeechCases
 
             _interpreter.SetPattern
             (
-                @"выполнено | сделано | сделаны | готово | готовы | готова | готовая {*}>numberParser#"
+                @"выполнено |  сделана | сделано | сделаны | готово | готовы | готова | готовая {*}>numberParser#"
             );
             var result = _interpreter.TryInterpret(message.OriginalString);
 
