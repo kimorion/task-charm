@@ -89,7 +89,7 @@ namespace Charm.Core.Domain.Utils
             };
 
             if (timeUnitType == null) return null;
-            
+
             return timeUnitType switch
             {
                 TimeUnitType.Second => TimeSpan.FromSeconds(1),
@@ -119,6 +119,27 @@ namespace Charm.Core.Domain.Utils
             };
 
             return unitType != null;
+        }
+
+        public static bool NumberParser(List<string> words, out List<int>? numbers)
+        {
+            numbers = new List<int>();
+            foreach (var word in words)
+            {
+                if (!int.TryParse(word, out var number))
+                {
+                    return false;
+                }
+
+                numbers.Add(number);
+            }
+
+            if (numbers.Count <= 0)
+            {
+                numbers = null;
+            }
+
+            return numbers != null;
         }
     }
 

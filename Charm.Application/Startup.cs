@@ -1,6 +1,7 @@
 using AutoMapper;
 using Charm.Core.Domain.Interpreter;
 using Charm.Core.Domain.Services;
+using Charm.Core.Domain.SpeechCases;
 using Charm.Core.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -34,7 +35,7 @@ namespace Charm.Application
                 .Build();
             DbSettingsSection = dbSettings.GetSection("ConnectionStrings");
         }
-        
+
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddScoped<UserService>();
@@ -42,6 +43,12 @@ namespace Charm.Application
             services.AddTransient<CharmManager>();
             services.AddTransient<CharmNotifierService>();
             services.AddTransient<CharmInterpreter>();
+            services.AddTransient<RemoveTaskCase>();
+            services.AddTransient<MarkTaskCase>();
+            services.AddTransient<TaskListCase>();
+            services.AddTransient<HelpCase>();
+            services.AddTransient<TaskCreationCase>();
+            services.AddTransient<AddReminderToTaskCase>();
             services.AddDbContext<CharmDbContext>(
                 options => options.UseNpgsql(DbSettingsSection["Main"]));
 
@@ -66,6 +73,7 @@ namespace Charm.Application
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILogger<Startup> logger)
         {
+            UpdateDatabase(app);
             logger.LogInformation($"Telegram Webhook set: {_setWebhookUrl}");
 
 
@@ -84,8 +92,6 @@ namespace Charm.Application
             app.UseRouting();
 
             app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
-
-            UpdateDatabase(app);
         }
 
         private static void UpdateDatabase(IApplicationBuilder app)

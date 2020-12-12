@@ -66,7 +66,7 @@ namespace Charm.Application
 
             foreach (var reminder in reminders)
             {
-                var text = GenerateNotificationTest(reminder);
+                var text = GenerateNotificationText(reminder);
 
                 try
                 {
@@ -89,7 +89,7 @@ namespace Charm.Application
             }
         }
 
-        private static string GenerateNotificationTest(Reminder reminder)
+        private static string GenerateNotificationText(Reminder reminder)
         {
             StringBuilder builder = new StringBuilder();
             var eventTime = reminder.Deadline;

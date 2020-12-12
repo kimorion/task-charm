@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Charm.Core.Domain.Entities;
 using Charm.Core.Domain.Interpreter;
 using Charm.Core.Domain.SpeechCases;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot.Types;
 
@@ -17,19 +18,25 @@ namespace Charm.Core.Domain.Services
         private readonly UserService _userService;
         private readonly List<SpeechCase> SpeechCases;
         private readonly CharmInterpreter _interpreter;
+        private readonly IServiceProvider _provider;
 
         public CharmInterpreterService(CharmManager manager, ILogger<CharmInterpreterService> logger,
-            UserService userService, CharmInterpreter interpreter)
+            UserService userService, CharmInterpreter interpreter, IServiceProvider provider)
         {
             _manager = manager;
             _logger = logger;
             _userService = userService;
             _interpreter = interpreter;
+            _provider = provider;
 
             SpeechCases = new List<SpeechCase>
             {
-                new TaskListCase(_interpreter),
-                new TaskCreationCase(_interpreter),
+                provider.GetRequiredService<HelpCase>(),
+                provider.GetRequiredService<RemoveTaskCase>(),
+                provider.GetRequiredService<MarkTaskCase>(),
+                provider.GetRequiredService<AddReminderToTaskCase>(),
+                provider.GetRequiredService<TaskListCase>(),
+                provider.GetRequiredService<TaskCreationCase>(),
             };
         }
 

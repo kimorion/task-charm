@@ -56,8 +56,9 @@ namespace Charm.Application.Controllers
             }
 
             _logger.LogDebug(response);
+            
             if (update.Message != null)
-                await _client.SendTextMessageAsync(update.Message.From.Id, response);
+                await _client.SendTextMessageAsync(update.Message.From.Id, response, ParseMode.Html);
             return Ok();
         }
     }

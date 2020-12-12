@@ -10,10 +10,11 @@ using Charm.Core.Domain.Interpreter;
 using Charm.Core.Domain.Services;
 using Charm.Core.Domain.Utils;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 
 namespace Charm.Core.Domain.SpeechCases
 {
-    public class TaskListCase : SpeechCase
+    public partial class TaskListCase : SpeechCase
     {
         private readonly CharmInterpreter _interpreter;
 
@@ -29,7 +30,7 @@ namespace Charm.Core.Domain.SpeechCases
         {
             _interpreter.SetPattern
             (
-                @" [ {1}>listTypeParser ] (задачи | дела | (список [{1}>listTypeParser] (задач | дел)) [на {1}>dateParser]) #"
+                @" [ {1}>listTypeParser ] (задачи | дела | (список [{1}>listTypeParser] [задач | дел]) [на {1}>dateParser] #"
             );
             _interpreter.AddParser("listTypeParser", ListTypeParser);
             _interpreter.AddParser("dateParser", DateParser);
@@ -76,32 +77,23 @@ namespace Charm.Core.Domain.SpeechCases
             }
 
             var gists = await manager.SearchGists(userId, criteria);
-
-            StringBuilder builder = new StringBuilder();
-            builder.Append(_listCreationType == ListCreationType.All
+            var responseBuilder = new StringBuilder();
+            responseBuilder.AppendLine("<b>");
+            responseBuilder.Append(_listCreationType == ListCreationType.All
                 ? "Список всех задач"
                 : "Список несделанных задач");
-            builder.Append(_date.HasValue ? " на " + _date.Value.ToString("yyyy-M-d") : " за все время");
-            builder.Append(":");
-            builder.AppendLine();
-            var i = 1;
-            foreach (var gist in gists)
-            {
-                builder.Append($"{i++}. ");
-                string dateTimeString =
-                    gist.Reminder?.Deadline.ToString("yyyy-M-d dddd HH:mm", CultureInfo.GetCultureInfo("RU-ru")) ??
-                    "без времени";
-                builder.AppendLine(
-                    $"{gist.Text} ({(gist.IsDone ? "X" : "0")}) ({dateTimeString})");
-            }
+            responseBuilder.Append(_date.HasValue ? " на " + _date.Value.ToString("yyyy-M-d") : " за все время");
+            responseBuilder.Append(':');
+            responseBuilder.AppendLine("</b>");
+            responseBuilder.AppendLine();
+            var gistListResponse = GistHelper.CreateGistListResponse(gists);
+            responseBuilder.AppendLine(gistListResponse);
 
-            return builder.ToString();
-        }
+            var userDialogContext = manager.GetUserDialogContext();
+            userDialogContext.LastGistIds = gists.Select(g => g.Id).ToList();
+            await manager.SetUserContext(userDialogContext);
 
-        enum ListCreationType
-        {
-            All,
-            Undone
+            return responseBuilder.ToString();
         }
     }
 }

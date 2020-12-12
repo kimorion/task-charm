@@ -1,50 +1,53 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 using Charm.Core.Domain.Dto;
 using Charm.Core.Domain.Entities;
 using Charm.Core.Domain.Interpreter;
 using Charm.Core.Domain.Services;
 using Charm.Core.Domain.Utils;
-using Telegram.Bot.Types;
+using Charm.Core.Infrastructure.Entities;
 
 namespace Charm.Core.Domain.SpeechCases
 {
-    public class TaskCreationCase : SpeechCase
+    public class AddReminderToTaskCase : SpeechCase
     {
         private readonly CharmInterpreter _interpreter;
-        private string? _text;
+        private List<int>? _numbers;
         private DateTimeOffset? _date;
         private TimeSpan? _time;
         private string? _amount;
 
-        public TaskCreationCase(CharmInterpreter interpreter)
+        public AddReminderToTaskCase(CharmInterpreter interpreter)
         {
             _interpreter = interpreter;
         }
 
         public override bool TryParse(MessageInfo message)
         {
+            _interpreter.AddParser("numberParser", NumberParser);
             _interpreter.AddParser("dayParser", DayParser);
             _interpreter.AddParser("clockTimeParser", ClockTimeParser);
-            _interpreter.AddParser("spanTimeParser", SpanTimeParser);
-            _interpreter.AddParser("textParser", TextParser);
             _interpreter.AddParser("amountParser", AmountParser);
+            _interpreter.AddParser("spanTimeParser", SpanTimeParser);
+
 
             _interpreter.SetPattern
             (
-                @"через [{1}>amountParser] {1}>spanTimeParser {*}>textParser #"
+                @"[создай | добавь] напоминание | напомни [о | про] {1}>numberParser
+                    [в | во | на] [{1}>dayParser] [в] [{1}>clockTimeParser] [часов] #"
             );
             var result = _interpreter.TryInterpret(message.OriginalString);
-            if (result) return true;
+
+            if (result) return result;
 
             _interpreter.SetPattern
             (
-                @"[в | во] [{1}>dayParser] [в] [{1}>clockTimeParser] [часов] {*}>textParser #"
+                @"[создай | добавь] напоминание | напомни [о | про] {1}>numberParser
+                    через [{1}>amountParser] {1}>spanTimeParser #"
             );
             result = _interpreter.TryInterpret(message.OriginalString);
-            
 
             return result;
         }
@@ -89,17 +92,14 @@ namespace Charm.Core.Domain.SpeechCases
             return _time != null;
         }
 
-        private bool TextParser(List<string> words)
+        private bool NumberParser(List<string> words)
         {
-            if (words.Count <= 0) return false;
-
-            _text = string.Join(" ", words);
-            return true;
+            return CharmParser.NumberParser(words, out _numbers);
         }
 
         public override async Task<string> ApplyAndRespond(long userId, CharmManager manager)
         {
-            if (_text is null) throw new Exception();
+            if (_numbers == null) throw new NullReferenceException(nameof(_numbers));
 
             if (_time.HasValue)
             {
@@ -107,24 +107,26 @@ namespace Charm.Core.Domain.SpeechCases
                 _date = _date.Value.Add(_time.Value);
             }
 
-            if (_date is not null)
-            {
-                await manager.CreateGistWithReminder(new GistWithReminderRequest
-                {
-                    ChatId = userId,
-                    Deadline = _date.Value,
-                    GistMessage = _text
-                });
+            if (_date == null) throw new NullReferenceException(nameof(_date));
 
-                return
-                    $"Создана задача \"{_text}\" на " +
-                    $"{_date.Value.ToString("yyyy-M-d dddd HH:mm", CultureInfo.GetCultureInfo("RU-ru"))}";
-            }
-            else
+            Gist? gist = (await manager.GetGistsFromContext(new List<int> {_numbers[0]})).FirstOrDefault();
+            if (gist == null) return "Задача не найдена, обновите список";
+            if (gist.Reminder != null)
             {
-                await manager.CreateGist(new GistRequest {ChatId = userId, GistMessage = _text});
-                return $"Создана задача \"{_text}\" без времени";
+                gist.Reminder.Deadline = _date.Value;
+                await manager.Context.SaveChangesAsync();
+                return "Напоминание было обновлено для задачи:\n " +
+                       GistHelper.CreateGistListResponse(new List<Gist> {gist});
             }
+
+            await manager.CreateReminder(new ReminderRequest
+            {
+                GistId = gist.Id,
+                Deadline = _date.Value
+            });
+
+            return "Напоминание было создано для задачи: \n" +
+                   GistHelper.CreateGistListResponse(new List<Gist> {gist});
         }
     }
 }

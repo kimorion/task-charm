@@ -4,15 +4,17 @@ using System.Collections.Generic;
 using Charm.Core.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace Charm.Core.Infrastructure.Migrations
 {
     [DbContext(typeof(CharmDbContext))]
-    partial class CharmDbContextModelSnapshot : ModelSnapshot
+    [Migration("20201212165254_AddDialogContext")]
+    partial class AddDialogContext
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
