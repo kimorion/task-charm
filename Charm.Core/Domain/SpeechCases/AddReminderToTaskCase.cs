@@ -49,7 +49,7 @@ namespace Charm.Core.Domain.SpeechCases
             );
             result = _interpreter.TryInterpret(message.OriginalString);
 
-            return result;
+            return !(_numbers is null || _date is null && _time is null) && result;
         }
 
         private bool AmountParser(List<string> words)
