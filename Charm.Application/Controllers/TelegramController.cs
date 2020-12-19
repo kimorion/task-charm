@@ -64,6 +64,7 @@ namespace Charm.Application.Controllers
                 {
                     await _client.SendTextMessageAsync(int.Parse(_adminId),
                         "Произошла ошибка приложения: \n" + e.Message, ParseMode.Html);
+                    return Ok();
                 }
             }
 
