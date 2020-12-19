@@ -1,0 +1,1 @@
+dotnet run -p ./Charm.Application/Charm.Application.csproj

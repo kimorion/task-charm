@@ -40,14 +40,15 @@ namespace Charm.Core.Domain.SpeechCases
             );
             var result = _interpreter.TryInterpret(message.OriginalString);
 
-            if (result) return result;
-
-            _interpreter.SetPattern
-            (
-                @"[создай | добавь] напоминание | напомни [о | про] {1}>numberParser
+            if (!result)
+            {
+                _interpreter.SetPattern
+                (
+                    @"[создай | добавь] напоминание | напомни [о | про] {1}>numberParser
                     через [{1}>amountParser] {1}>spanTimeParser #"
-            );
-            result = _interpreter.TryInterpret(message.OriginalString);
+                );
+                result = _interpreter.TryInterpret(message.OriginalString);
+            }
 
             return !(_numbers is null || _date is null && _time is null) && result;
         }
