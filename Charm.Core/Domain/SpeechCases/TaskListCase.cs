@@ -77,6 +77,12 @@ namespace Charm.Core.Domain.SpeechCases
             }
 
             var gists = await manager.SearchGists(userId, criteria);
+
+            if (gists.Count == 0)
+                return _listCreationType == ListCreationType.All
+                    ? "Список задач пуст"
+                    : "Список несделанных задач пуст";
+
             var responseBuilder = new StringBuilder();
             responseBuilder.AppendLine("<b>");
             responseBuilder.Append(_listCreationType == ListCreationType.All
