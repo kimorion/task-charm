@@ -44,7 +44,7 @@ namespace Charm.Core.Domain.SpeechCases
                 @"[в | во] [{1}>dayParser] [в] [{1}>clockTimeParser] [часов] {*}>textParser #"
             );
             result = _interpreter.TryInterpret(message.OriginalString);
-            
+
 
             return result;
         }
@@ -103,7 +103,14 @@ namespace Charm.Core.Domain.SpeechCases
 
             if (_time.HasValue)
             {
-                _date ??= DateTimeOffset.Now;
+                var currentTime = DateTimeOffset.Now;
+                DateTimeOffset notificationDate = currentTime.DateTime.Date;
+                if (currentTime.TimeOfDay >= _time.Value)
+                {
+                    notificationDate = notificationDate.AddDays(1);
+                }
+
+                _date ??= notificationDate;
                 _date = _date.Value.Add(_time.Value);
             }
 
