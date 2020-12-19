@@ -113,6 +113,10 @@ namespace Charm.Core.Domain.SpeechCases
                 _date ??= notificationDate;
                 _date = _date.Value.Add(_time.Value);
             }
+            else if (_date.HasValue)
+            {
+                _date = _date.Value.AddHours(12);
+            }
 
             if (_date is not null)
             {
