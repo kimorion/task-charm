@@ -80,8 +80,8 @@ namespace Charm.Core.Domain.SpeechCases
 
             if (gists.Count == 0)
                 return _listCreationType == ListCreationType.All
-                    ? "Список задач пуст"
-                    : "Список несделанных задач пуст";
+                    ? "<b>Список задач пуст</b>"
+                    : "<b>Список несделанных задач пуст</b>";
 
             var responseBuilder = new StringBuilder();
             responseBuilder.AppendLine("<b>");
