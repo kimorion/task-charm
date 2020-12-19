@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using Charm.Core.Domain.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -20,19 +21,22 @@ namespace Charm.Application.Controllers
         private readonly CharmManager _manager;
         private readonly ILogger<TelegramController> _logger;
         private readonly UserService _userService;
+        private readonly string _adminId;
 
         public TelegramController(
             ITelegramBotClient client,
             CharmInterpreterService interpreterService,
             CharmManager manager,
             ILogger<TelegramController> logger,
-            UserService userService)
+            UserService userService,
+            IConfiguration configuration)
         {
             _client = client;
             _interpreterService = interpreterService;
             _manager = manager;
             _logger = logger;
             _userService = userService;
+            _adminId = configuration["TelegramAdminId"];
         }
 
         [HttpPost]
@@ -51,12 +55,20 @@ namespace Charm.Application.Controllers
 
             if (response is null)
             {
-                await _userService.Initialize(update.Message.From);
-                response = await _interpreterService.TakeMessage(update.Message);
+                try
+                {
+                    await _userService.Initialize(update.Message.From);
+                    response = await _interpreterService.TakeMessage(update.Message);
+                }
+                catch (Exception e)
+                {
+                    await _client.SendTextMessageAsync(int.Parse(_adminId),
+                        "Произошла ошибка приложения: \n" + e.Message, ParseMode.Html);
+                }
             }
 
             _logger.LogDebug(response);
-            
+
             if (update.Message != null)
                 await _client.SendTextMessageAsync(update.Message.From.Id, response, ParseMode.Html);
             return Ok();

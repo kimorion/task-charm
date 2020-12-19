@@ -29,6 +29,7 @@ namespace Charm.Application
                 .AddJsonFile("./conf/telegram-bot-settings.json", optional: false)
                 .Build();
             TelegramSettingsSection = botSettings.GetSection("TelegramBotSettings");
+            configuration["TelegramAdminId"] = TelegramSettingsSection["AdminUserId"];
 
             var dbSettings = new ConfigurationBuilder()
                 .AddJsonFile("./conf/database-settings.json", optional: false)
