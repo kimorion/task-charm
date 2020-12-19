@@ -63,7 +63,7 @@ namespace Charm.Application.Controllers
                 catch (Exception e)
                 {
                     await _client.SendTextMessageAsync(int.Parse(_adminId),
-                        "Произошла ошибка приложения: \n" + e.Message, ParseMode.Html);
+                        $"Произошла ошибка приложения: \n {e.GetType()}" + e.Message, ParseMode.Html);
                     return Ok();
                 }
             }
