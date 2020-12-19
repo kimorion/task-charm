@@ -38,7 +38,7 @@ namespace Charm.Core.Domain.SpeechCases
             _interpreter.SetPattern
             (
                 @"([нужно | надо | необходимо] сделать | выполнить) |
-                     (не (сделаны | выполнены | готовы | готова | выполнена | сделана)) {*}>numberParser#"
+                     (не (сделаны | выполнены | готовы | готово | готова | выполнена | сделана)) {*}>numberParser#"
             );
             result = _interpreter.TryInterpret(message.OriginalString);
             if (result)
