@@ -103,14 +103,20 @@ namespace Charm.Core.Domain.SpeechCases
 
             if (_time.HasValue)
             {
-                var currentTime = DateTimeOffset.Now;
-                DateTimeOffset notificationDate = currentTime.DateTime.Date;
-                if (currentTime.TimeOfDay >= _time.Value)
+                if (_date.HasValue)
                 {
-                    notificationDate = notificationDate.AddDays(1);
+                    _date = _date.Value.DateTime.Date;
+                }
+                else
+                {
+                    var currentTime = DateTimeOffset.Now;
+                    _date = currentTime.DateTime.Date;
+                    if (currentTime.TimeOfDay >= _time.Value)
+                    {
+                        _date = _date.Value.AddDays(1);
+                    }
                 }
 
-                _date ??= notificationDate;
                 _date = _date.Value.Add(_time.Value);
             }
             else if (_date.HasValue)
@@ -118,7 +124,14 @@ namespace Charm.Core.Domain.SpeechCases
                 _date = _date.Value.AddHours(12);
             }
 
-            if (_date is not null)
+            string result;
+
+            if (_date is null)
+            {
+                await manager.CreateGist(new GistRequest {ChatId = userId, GistMessage = _text});
+                result = $"Создана задача \"{_text}\" без времени";
+            }
+            else
             {
                 await manager.CreateGistWithReminder(new GistWithReminderRequest
                 {
@@ -127,15 +140,12 @@ namespace Charm.Core.Domain.SpeechCases
                     GistMessage = _text
                 });
 
-                return
+                result =
                     $"Создана задача \"{_text}\" на " +
                     $"{_date.Value.ToString("yyyy-M-d dddd HH:mm", CultureInfo.GetCultureInfo("RU-ru"))}";
             }
-            else
-            {
-                await manager.CreateGist(new GistRequest {ChatId = userId, GistMessage = _text});
-                return $"Создана задача \"{_text}\" без времени";
-            }
+
+            return result;
         }
     }
 }
