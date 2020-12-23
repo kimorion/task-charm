@@ -74,7 +74,7 @@ namespace Charm.Core.Domain.Utils
                 _ => null
             };
 
-            return addedTime;
+            return addedTime != null ? DateTime.Now.TimeOfDay.Add(addedTime.Value) : null;
         }
 
         public static TimeSpan? ParseShortTimeSpan(string s)
@@ -90,7 +90,7 @@ namespace Charm.Core.Domain.Utils
 
             if (timeUnitType == null) return null;
 
-            return timeUnitType switch
+            var addedTime = timeUnitType switch
             {
                 TimeUnitType.Second => TimeSpan.FromSeconds(1),
                 TimeUnitType.Minute => TimeSpan.FromMinutes(1),
@@ -98,6 +98,8 @@ namespace Charm.Core.Domain.Utils
                 TimeUnitType.Day => TimeSpan.FromDays(1),
                 _ => throw new Exception("impossible timeUnitType value")
             };
+            
+            return DateTime.Now.TimeOfDay.Add(addedTime);
         }
 
         public static bool TryParseTimeUnit(string s, out TimeUnitType? unitType)
