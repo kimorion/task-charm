@@ -3,7 +3,7 @@ git pull
 sudo killall ngrok
 nohup ngrok http 8444 &
 sleep 2
-url=$(curl localhost:4040/api/tunnels | grep -o "https[^\"]*ngrok.io")
+url=$(curl localhost:4040/api/tunnels | grep -o 'https[^"]*ngrok.io')
 echo got new url: "$url"
 echo
 sed -i 's,https[^"]*ngrok.io,'"$url"',' ./Charm.Application/conf/telegram-bot-settings.json
