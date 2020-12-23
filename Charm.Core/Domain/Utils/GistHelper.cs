@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using Charm.Core.Domain.SpeechCases;
 using Charm.Core.Infrastructure.Entities;
 
 namespace Charm.Core.Domain.Utils

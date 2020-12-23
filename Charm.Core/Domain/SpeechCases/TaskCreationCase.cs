@@ -18,6 +18,7 @@ namespace Charm.Core.Domain.SpeechCases
         private DateTimeOffset? _date;
         private TimeSpan? _time;
         private string? _amount;
+        private DateTimeOffset _currentTime;
 
         public TaskCreationCase(CharmInterpreter interpreter)
         {
@@ -26,6 +27,8 @@ namespace Charm.Core.Domain.SpeechCases
 
         public override bool TryParse(MessageInfo message)
         {
+            _currentTime = DateTimeOffset.Now;
+
             _interpreter.AddParser("dayParser", DayParser);
             _interpreter.AddParser("clockTimeParser", ClockTimeParser);
             _interpreter.AddParser("spanTimeParser", SpanTimeParser);
@@ -109,8 +112,8 @@ namespace Charm.Core.Domain.SpeechCases
                 }
                 else
                 {
-                    var currentTime = DateTimeOffset.Now;
-                    _date = currentTime.DateTime.Date;
+                    var currentTime = _currentTime.DateTime.Date;
+                    _date = currentTime;
                     if (currentTime.TimeOfDay >= _time.Value)
                     {
                         _date = _date.Value.AddDays(1);
